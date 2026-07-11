@@ -1,8 +1,8 @@
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
+from docx.oxml.ns import qn, nsdecls
+from docx.oxml import OxmlElement, parse_xml
 from fpdf import FPDF
 import os
 import re
@@ -43,6 +43,30 @@ class CVBuilder:
                 element.set(qn(f"w:{attr}"), str(value))
             tcBorders.append(element)
         tcPr.append(tcBorders)
+
+    def _add_hyperlink(self, paragraph, text: str, url: str, font_size=9):
+        part = paragraph.part
+        r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+        hyperlink = OxmlElement("w:hyperlink")
+        hyperlink.set(qn("r:id"), r_id)
+        new_run = OxmlElement("w:r")
+        rPr = OxmlElement("w:rPr")
+        c = OxmlElement("w:color")
+        c.set(qn("w:val"), "2255CC")
+        rPr.append(c)
+        u = OxmlElement("w:u")
+        u.set(qn("w:val"), "single")
+        rPr.append(u)
+        sz = OxmlElement("w:sz")
+        sz.set(qn("w:val"), str(int(font_size * 2)))
+        rPr.append(sz)
+        new_run.append(rPr)
+        t = OxmlElement("w:t")
+        t.text = text
+        new_run.append(t)
+        hyperlink.append(new_run)
+        paragraph._p.append(hyperlink)
+        return hyperlink
 
     def _add_hr(self, doc):
         p = doc.add_paragraph()
@@ -89,23 +113,42 @@ class CVBuilder:
         title_run.font.size = Pt(11)
         title_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
 
-        contact_line = []
-        if self.info["location"]:
-            contact_line.append(self.info["location"])
-        if self.info["linkedin"]:
-            contact_line.append(f"LinkedIn({self.info['linkedin']})")
-        if self.info["github"]:
-            contact_line.append(f"GitHub({self.info['github']})")
-        if self.info["email"]:
-            contact_line.append(self.info["email"])
-        if self.info["website"]:
-            contact_line.append(self.info["website"])
-
         contact_p = doc.add_paragraph()
         contact_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        contact_run = contact_p.add_run("  •  ".join(contact_line))
-        contact_run.font.size = Pt(9)
-        contact_run.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+        contact_items = []
+        if self.info["location"]:
+            r = contact_p.add_run(self.info["location"])
+            r.font.size = Pt(9)
+            r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            contact_items.append(True)
+        if self.info["linkedin"]:
+            if contact_items:
+                r = contact_p.add_run("  •  ")
+                r.font.size = Pt(9)
+                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            self._add_hyperlink(contact_p, "LinkedIn", self.info["linkedin"], font_size=9)
+            contact_items.append(True)
+        if self.info["github"]:
+            if contact_items:
+                r = contact_p.add_run("  •  ")
+                r.font.size = Pt(9)
+                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            self._add_hyperlink(contact_p, "GitHub", self.info["github"], font_size=9)
+            contact_items.append(True)
+        if self.info["email"]:
+            if contact_items:
+                r = contact_p.add_run("  •  ")
+                r.font.size = Pt(9)
+                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            self._add_hyperlink(contact_p, self.info["email"], f"mailto:{self.info['email']}", font_size=9)
+            contact_items.append(True)
+        if self.info["website"]:
+            if contact_items:
+                r = contact_p.add_run("  •  ")
+                r.font.size = Pt(9)
+                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+            self._add_hyperlink(contact_p, self.info["website"], self.info["website"], font_size=9)
+            contact_items.append(True)
 
         self._add_hr(doc)
 
@@ -193,14 +236,16 @@ class CVBuilder:
 
             # Links inline
             if project.get("links"):
-                link_parts = []
-                for platform, url in project["links"].items():
-                    link_parts.append(f"{platform}({url})")
                 link_p = doc.add_paragraph()
                 link_p.paragraph_format.space_after = Pt(1)
-                link_run = link_p.add_run("  |  ".join(link_parts))
-                link_run.font.size = Pt(8.5)
-                link_run.font.color.rgb = RGBColor(0x22, 0x55, 0xCC)
+                link_idx = 0
+                for platform, url in project["links"].items():
+                    if link_idx > 0:
+                        sep = link_p.add_run("  |  ")
+                        sep.font.size = Pt(8.5)
+                        sep.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+                    self._add_hyperlink(link_p, platform, url, font_size=8.5)
+                    link_idx += 1
 
             # Description
             if project.get("description"):
@@ -271,14 +316,16 @@ class CVBuilder:
                 comp_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
 
             if project.get("links"):
-                link_parts = []
-                for platform, url in project["links"].items():
-                    link_parts.append(f"{platform}({url})")
                 link_p = doc.add_paragraph()
                 link_p.paragraph_format.space_after = Pt(1)
-                link_run = link_p.add_run("  |  ".join(link_parts))
-                link_run.font.size = Pt(8.5)
-                link_run.font.color.rgb = RGBColor(0x22, 0x55, 0xCC)
+                link_idx = 0
+                for platform, url in project["links"].items():
+                    if link_idx > 0:
+                        sep = link_p.add_run("  |  ")
+                        sep.font.size = Pt(8.5)
+                        sep.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+                    self._add_hyperlink(link_p, platform, url, font_size=8.5)
+                    link_idx += 1
 
             for h in project.get("highlights", []):
                 bp = doc.add_paragraph()
