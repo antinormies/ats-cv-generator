@@ -3,12 +3,26 @@ from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
+from fpdf import FPDF
+from datetime import date
 import os
 
 
 class CoverLetterBuilder:
     def __init__(self, info: dict):
         self.info = info
+
+    def _sanitize_text(self, text: str) -> str:
+        replacements = {
+            "\u2019": "'", "\u2018": "'",
+            "\u201C": '"', "\u201D": '"',
+            "\u2013": "-", "\u2014": "-",
+            "\u2022": "-", "\u2026": "...",
+            "\u00A0": " ",
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return text
 
     def _normalize_url(self, url: str) -> str:
         if url.startswith("mailto:"):
@@ -196,4 +210,122 @@ class CoverLetterBuilder:
             em.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
 
         doc.save(output_path)
+        return output_path
+
+    def build_pdf(self, output_path: str, body: str, company: str = "", recipient: str = "") -> str:
+        class CLPDF(FPDF):
+            def header(self):
+                pass
+            def footer(self):
+                self.set_y(-15)
+                self.set_font("Helvetica", "I", 7)
+                self.set_text_color(150, 150, 150)
+                self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
+
+        pdf = CLPDF()
+        pdf.alias_nb_pages()
+        pdf.set_auto_page_break(auto=True, margin=20)
+        pdf.add_page()
+        pdf.set_margins(15, 12, 15)
+
+        # --- HEADER ---
+        pdf.set_font("Helvetica", "B", 22)
+        pdf.set_text_color(26, 26, 46)
+        pdf.cell(0, 9, self.info["name"], align="C", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 11)
+        pdf.set_text_color(85, 85, 85)
+        pdf.cell(0, 7, self.info["title"], align="C", new_x="LMARGIN", new_y="NEXT")
+
+        pdf.set_font("Helvetica", "", 8.5)
+        pdf.set_text_color(102, 102, 102)
+        contact_items = []
+        if self.info.get("location"):
+            contact_items.append(("text", self.info["location"], None))
+        if self.info.get("linkedin"):
+            contact_items.append(("link", "LinkedIn", self._normalize_url(self.info["linkedin"])))
+        if self.info.get("github"):
+            contact_items.append(("link", "GitHub", self._normalize_url(self.info["github"])))
+        if self.info.get("email"):
+            contact_items.append(("link", self.info["email"], f"mailto:{self.info['email']}"))
+        if self.info.get("website"):
+            contact_items.append(("link", self.info["website"], self._normalize_url(self.info["website"])))
+        total_w = 0
+        for idx, (ctype, text, url) in enumerate(contact_items):
+            if idx > 0:
+                total_w += pdf.get_string_width("  |  ")
+            total_w += pdf.get_string_width(text)
+        x_cur = (pdf.w - total_w) / 2
+        y_pos = pdf.get_y()
+        for idx, (ctype, text, url) in enumerate(contact_items):
+            if idx > 0:
+                sep = "  |  "
+                sw = pdf.get_string_width(sep)
+                pdf.set_xy(x_cur, y_pos)
+                pdf.cell(sw, 6, sep)
+                x_cur += sw
+            tw = pdf.get_string_width(text)
+            pdf.set_xy(x_cur, y_pos)
+            if ctype == "link":
+                pdf.set_text_color(34, 85, 204)
+                pdf.cell(tw, 6, text)
+                pdf.link(x_cur, y_pos, tw, 6, url)
+                pdf.set_text_color(102, 102, 102)
+            else:
+                pdf.cell(tw, 6, text)
+            x_cur += tw
+        pdf.set_y(y_pos + 8)
+
+        # --- HR ---
+        y = pdf.get_y()
+        pdf.set_draw_color(51, 51, 51)
+        pdf.set_line_width(0.3)
+        pdf.line(15, y, pdf.w - 15, y)
+        pdf.set_y(y + 4)
+
+        # --- DATE ---
+        pdf.set_font("Helvetica", "", 10)
+        pdf.set_text_color(51, 51, 51)
+        pdf.cell(0, 6, self._sanitize_text(date.today().strftime("%B %d, %Y")), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+
+        # --- RECIPIENT ---
+        if recipient:
+            pdf.cell(0, 5.5, recipient, new_x="LMARGIN", new_y="NEXT")
+        if company:
+            pdf.cell(0, 5.5, company, new_x="LMARGIN", new_y="NEXT")
+
+        pdf.ln(2)
+
+        # --- SUBJECT ---
+        pdf.set_font("Helvetica", "B", 10.5)
+        pdf.cell(0, 6, self._sanitize_text(f"Re: Application for {self.info['title']} Position"), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        # --- SALUTATION ---
+        pdf.set_font("Helvetica", "", 10.5)
+        pdf.cell(0, 6, "Dear Hiring Manager,", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
+
+        # --- BODY ---
+        pdf.set_font("Helvetica", "", 10.5)
+        for para in body.split("\n"):
+            para = self._sanitize_text(para.strip())
+            if para:
+                pdf.multi_cell(0, 5.5, para)
+                pdf.ln(2)
+
+        # --- CLOSING ---
+        pdf.ln(4)
+        pdf.cell(0, 6, "Best regards,", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(2)
+        pdf.set_font("Helvetica", "B", 10.5)
+        pdf.cell(0, 6, self.info["name"], new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.set_text_color(102, 102, 102)
+        if self.info.get("phone"):
+            pdf.cell(0, 5, self.info["phone"], new_x="LMARGIN", new_y="NEXT")
+        if self.info.get("email"):
+            pdf.cell(0, 5, self.info["email"], new_x="LMARGIN", new_y="NEXT")
+
+        pdf.output(output_path)
         return output_path

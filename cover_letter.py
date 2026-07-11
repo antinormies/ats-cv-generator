@@ -2,13 +2,18 @@
 """
 Cover Letter Generator
 
-Generates a tailored cover letter in DOCX format using a local llama.cpp
-LLM server and your CV profile.
+Generates a tailored cover letter in DOCX + TXT + PDF formats using a local
+llama.cpp LLM server and your CV profile.
 
-Usage:
-    python cover_letter.py --job-posting job.txt
-    python cover_letter.py --job-posting job.txt --company "Acme Corp" --recipient "Hiring Manager"
-    python cover_letter.py --job-posting job.txt --output my_letter.docx
+Usage (pipe):
+    cat job.txt | python cover_letter.py --company "Acme Corp"
+
+Usage (interactive):
+    python cover_letter.py --company "Acme Corp"
+    Paste job posting, then press Ctrl+D (Linux/Mac) or Ctrl+Z (Windows)
+
+Usage (with recipient):
+    cat job.txt | python cover_letter.py --company "Acme Corp" --recipient "John"
 """
 
 import argparse
@@ -34,13 +39,47 @@ from cover_letter_builder import CoverLetterBuilder
 from llm_client import generate_cover_letter, list_models
 
 
+def read_job_posting() -> str:
+    if not sys.stdin.isatty():
+        return sys.stdin.read().strip()
+    print("Paste the job posting below, then press Ctrl+D when done:")
+    print("-" * 40)
+    lines = []
+    try:
+        for line in sys.stdin:
+            lines.append(line)
+    except KeyboardInterrupt:
+        print()
+        sys.exit(1)
+    return "".join(lines).strip()
+
+
+def save_txt(path: str, body: str, company: str, recipient: str):
+    from datetime import date
+    lines = []
+    lines.append(f"Date: {date.today().strftime('%B %d, %Y')}")
+    if company:
+        lines.append(f"Company: {company}")
+    lines.append("")
+    lines.append(f"Re: Application for {PERSONAL_INFO['title']} Position")
+    lines.append("")
+    lines.append("Dear Hiring Manager,")
+    lines.append("")
+    lines.append(body)
+    lines.append("")
+    lines.append("Best regards,")
+    lines.append(PERSONAL_INFO["name"])
+    lines.append("")
+    if PERSONAL_INFO.get("phone"):
+        lines.append(PERSONAL_INFO["phone"])
+    if PERSONAL_INFO.get("email"):
+        lines.append(PERSONAL_INFO["email"])
+    with open(path, "w") as f:
+        f.write("\n".join(lines))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate a tailored cover letter")
-    parser.add_argument(
-        "--job-posting", "-j",
-        required=True,
-        help="Path to a text file containing the job posting",
-    )
     parser.add_argument(
         "--company", "-c",
         default="",
@@ -50,11 +89,6 @@ def main():
         "--recipient", "-r",
         default="",
         help="Recipient name (e.g. Hiring Manager name)",
-    )
-    parser.add_argument(
-        "--output", "-o",
-        default="",
-        help="Output DOCX path (default: output/CoverLetter_[Company].docx)",
     )
     parser.add_argument(
         "--model", "-m",
@@ -75,23 +109,16 @@ def main():
     )
     args = parser.parse_args()
 
-    if not os.path.exists(args.job_posting):
-        print(f"Error: job posting file not found: {args.job_posting}")
-        sys.exit(1)
-
-    with open(args.job_posting) as f:
-        job_text = f.read().strip()
-
+    job_text = read_job_posting()
     if not job_text:
-        print("Error: job posting file is empty")
+        print("Error: no job posting provided")
         sys.exit(1)
 
-    print("📝 Generating cover letter...")
-    print(f"   Job posting: {args.job_posting} ({len(job_text)} chars)")
+    print(f"📝 Generating cover letter...")
+    print(f"   Job posting: {len(job_text)} chars")
     print(f"   Company: {args.company or '(not specified)'}")
     print()
 
-    # Check LLM connectivity
     print("🔌 Checking llama-server...")
     try:
         models = list_models()
@@ -104,7 +131,6 @@ def main():
         print("     http://localhost:8080")
         sys.exit(1)
 
-    # Generate body
     print("🤖 Generating cover letter content...")
     try:
         body = generate_cover_letter(
@@ -120,26 +146,33 @@ def main():
         print(f"   Error: {e}")
         sys.exit(1)
 
-    print("   Cover letter body generated successfully.")
+    print("   Cover letter generated successfully.")
     print()
 
-    # Build DOCX
     output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
     os.makedirs(output_dir, exist_ok=True)
+    company_slug = args.company.replace(" ", "_") if args.company else "Unknown"
+    base = os.path.join(output_dir, f"CoverLetter_{company_slug}")
 
-    if args.output:
-        output_path = args.output
-    else:
-        company_slug = args.company.replace(" ", "_") if args.company else "Unknown"
-        output_path = os.path.join(output_dir, f"CoverLetter_{company_slug}.docx")
+    docx_path = base + ".docx"
+    txt_path = base + ".txt"
+    pdf_path = base + ".pdf"
 
     builder = CoverLetterBuilder(PERSONAL_INFO)
-    builder.build(output_path, body=body, company=args.company, recipient=args.recipient)
+    builder.build(docx_path, body=body, company=args.company, recipient=args.recipient)
+    save_txt(txt_path, body, args.company, args.recipient)
+    builder.build_pdf(pdf_path, body=body, company=args.company, recipient=args.recipient)
 
-    print(f"✅ Cover letter saved: {output_path}")
+    print(f"✅ DOCX: {docx_path}")
+    print(f"✅ TXT:  {txt_path}")
+    print(f"✅ PDF:  {pdf_path}")
     print()
     print("--- Preview ---")
-    print(body[:500] + ("..." if len(body) > 500 else ""))
+    for line in body.split("\n")[:8]:
+        if line.strip():
+            print(f"  {line.strip()}")
+    if body.count("\n") > 8:
+        print("  ...")
     print("---------------")
 
 
