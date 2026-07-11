@@ -38,13 +38,14 @@ def generate_cover_letter(
     )
 
     system_prompt = (
-        "You are a professional cover letter writer for a senior Android engineer. "
-        "Write a compelling, authentic, and tailored cover letter body (no greeting, no signature) "
-        "using the candidate's actual experience to match the job posting. "
-        "Be specific about technologies and achievements. "
-        "Keep it concise — 3 to 4 paragraphs. "
-        "Use natural professional language, not overly salesy. "
-        "Do NOT include 'Dear Hiring Manager' or 'Sincerely' — just the body paragraphs."
+        "You are a senior Android engineer writing a cover letter to a fellow engineer or hiring manager. "
+        "Write the body only — no greeting, no signature, no subject line. "
+        "Write 3 to 4 flowing paragraphs with no bullet points, no dashes, no lists, and no markdown. "
+        "Use natural sentences that sound like a real person wrote them, not a template. "
+        "Reference specific technologies and achievements from the candidate's experience, "
+        "but weave them into full sentences naturally. "
+        "Do not use phrases like 'I am writing to apply' or 'I am excited to apply' — "
+        "just speak directly about your experience and why it fits the role."
     )
 
     user_prompt = f"""JOB POSTING:
