@@ -1,0 +1,25 @@
+# Personal data (keep your real info out of git)
+data/personal_info.py
+
+# Generated output
+output/
+*.docx
+*.pdf
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
