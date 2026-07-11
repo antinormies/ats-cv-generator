@@ -44,7 +44,15 @@ class CVBuilder:
             tcBorders.append(element)
         tcPr.append(tcBorders)
 
+    def _normalize_url(self, url: str) -> str:
+        if url.startswith("mailto:"):
+            return url
+        if not url.startswith(("http://", "https://")):
+            return f"https://{url}"
+        return url
+
     def _add_hyperlink(self, paragraph, text: str, url: str, font_size=9):
+        url = self._normalize_url(url)
         part = paragraph.part
         r_id = part.relate_to(url, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
         hyperlink = OxmlElement("w:hyperlink")
@@ -385,18 +393,41 @@ class CVBuilder:
         pdf.set_text_color(85, 85, 85)
         pdf.cell(0, 7, self.info["title"], align="C", new_x="LMARGIN", new_y="NEXT")
 
-        contact_parts = []
-        if self.info.get("location"):
-            contact_parts.append(self.info["location"])
-        if self.info.get("linkedin"):
-            contact_parts.append(f"LinkedIn")
-        if self.info.get("github"):
-            contact_parts.append("GitHub")
-        if self.info.get("email"):
-            contact_parts.append(self.info["email"])
         pdf.set_font("Helvetica", "", 8.5)
         pdf.set_text_color(102, 102, 102)
-        pdf.cell(0, 6, "  |  ".join(contact_parts), align="C", new_x="LMARGIN", new_y="NEXT")
+        contact_items = []
+        if self.info.get("location"):
+            contact_items.append(("text", self.info["location"], None))
+        if self.info.get("linkedin"):
+            contact_items.append(("link", "LinkedIn", self._normalize_url(self.info["linkedin"])))
+        if self.info.get("github"):
+            contact_items.append(("link", "GitHub", self._normalize_url(self.info["github"])))
+        if self.info.get("email"):
+            contact_items.append(("link", self.info["email"], f"mailto:{self.info['email']}"))
+        if self.info.get("website"):
+            contact_items.append(("link", self.info["website"], self._normalize_url(self.info["website"])))
+        pdf_w = pdf.w - pdf.l_margin - pdf.r_margin
+        x_start = pdf.l_margin
+        x_cur = x_start
+        y_pos = pdf.get_y()
+        for idx, (ctype, text, url) in enumerate(contact_items):
+            if idx > 0:
+                sep = "  |  "
+                sw = pdf.get_string_width(sep)
+                pdf.set_xy(x_cur, y_pos)
+                pdf.cell(sw, 6, sep)
+                x_cur += sw
+            tw = pdf.get_string_width(text)
+            pdf.set_xy(x_cur, y_pos)
+            if ctype == "link":
+                pdf.set_text_color(34, 85, 204)
+                pdf.cell(tw, 6, text)
+                pdf.link(x_cur, y_pos, tw, 6, url)
+                pdf.set_text_color(102, 102, 102)
+            else:
+                pdf.cell(tw, 6, text)
+            x_cur += tw
+        pdf.set_y(y_pos + 6)
         pdf.ln(3)
         self._pdf_hr(pdf)
         pdf.ln(2)
@@ -421,11 +452,25 @@ class CVBuilder:
         for project in self.info.get("latest_portfolio", []):
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(26, 26, 46)
-            title = project["title"]
+            pdf.cell(0, 5.5, project["title"], new_x="LMARGIN", new_y="NEXT")
             if project.get("links"):
-                link_str = " | ".join(project["links"].keys())
-                title += f"  ({link_str})"
-            pdf.cell(0, 5.5, title, new_x="LMARGIN", new_y="NEXT")
+                pdf.set_font("Helvetica", "", 8.5)
+                y_links = pdf.get_y()
+                x_link = pdf.l_margin
+                for lidx, (platform, url) in enumerate(project["links"].items()):
+                    if lidx > 0:
+                        pdf.set_xy(x_link, y_links)
+                        sw = pdf.get_string_width("  |  ")
+                        pdf.cell(sw, 4.5, "  |  ")
+                        x_link += sw
+                    pdf.set_text_color(34, 85, 204)
+                    lw = pdf.get_string_width(platform)
+                    pdf.set_xy(x_link, y_links)
+                    pdf.cell(lw, 4.5, platform)
+                    pdf.link(x_link, y_links, lw, 4.5, self._normalize_url(url))
+                    pdf.set_text_color(26, 26, 46)
+                    x_link += lw
+                pdf.set_y(y_links + 4.5)
             if project.get("description"):
                 pdf.set_font("Helvetica", "I", 9)
                 pdf.set_text_color(85, 85, 85)
@@ -468,10 +513,25 @@ class CVBuilder:
                 proj_title = proj["title"]
                 if proj.get("company"):
                     proj_title += f"  -  {proj['company']}"
-                if proj.get("links"):
-                    link_str = " | ".join(proj["links"].keys())
-                    proj_title += f"  ({link_str})"
                 pdf.cell(0, 5.5, proj_title, new_x="LMARGIN", new_y="NEXT")
+                if proj.get("links"):
+                    pdf.set_font("Helvetica", "", 8.5)
+                    y_links = pdf.get_y()
+                    x_link = pdf.l_margin
+                    for lidx, (platform, url) in enumerate(proj["links"].items()):
+                        if lidx > 0:
+                            pdf.set_xy(x_link, y_links)
+                            sw = pdf.get_string_width("  |  ")
+                            pdf.cell(sw, 4.5, "  |  ")
+                            x_link += sw
+                        pdf.set_text_color(34, 85, 204)
+                        lw = pdf.get_string_width(platform)
+                        pdf.set_xy(x_link, y_links)
+                        pdf.cell(lw, 4.5, platform)
+                        pdf.link(x_link, y_links, lw, 4.5, self._normalize_url(url))
+                        pdf.set_text_color(26, 26, 46)
+                        x_link += lw
+                    pdf.set_y(y_links + 4.5)
                 pdf.ln(1)
                 pdf.set_font("Helvetica", "", 9)
                 pdf.set_text_color(51, 51, 51)
