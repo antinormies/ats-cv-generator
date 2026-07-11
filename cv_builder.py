@@ -406,9 +406,12 @@ class CVBuilder:
             contact_items.append(("link", self.info["email"], f"mailto:{self.info['email']}"))
         if self.info.get("website"):
             contact_items.append(("link", self.info["website"], self._normalize_url(self.info["website"])))
-        pdf_w = pdf.w - pdf.l_margin - pdf.r_margin
-        x_start = pdf.l_margin
-        x_cur = x_start
+        total_w = 0
+        for idx, (ctype, text, url) in enumerate(contact_items):
+            if idx > 0:
+                total_w += pdf.get_string_width("  |  ")
+            total_w += pdf.get_string_width(text)
+        x_cur = (pdf.w - total_w) / 2
         y_pos = pdf.get_y()
         for idx, (ctype, text, url) in enumerate(contact_items):
             if idx > 0:
