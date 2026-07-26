@@ -139,19 +139,19 @@ class CVBuilder:
         loc_r = contact_p.add_run(self.info["location"])
         loc_r.font.size = Pt(8.5)
         loc_r.font.color.rgb = BODY_COLOR
-        sep_r = contact_p.add_run("  •  ")
+        sep_r = contact_p.add_run("  -  ")
         sep_r.font.size = Pt(8.5)
         sep_r.font.color.rgb = BODY_COLOR
         self._add_hyperlink(contact_p, "LinkedIn", self.info["linkedin"], font_size=8.5)
-        sep_r2 = contact_p.add_run("  •  ")
+        sep_r2 = contact_p.add_run("  -  ")
         sep_r2.font.size = Pt(8.5)
         sep_r2.font.color.rgb = BODY_COLOR
         self._add_hyperlink(contact_p, "GitHub", self.info["github"], font_size=8.5)
-        sep_r3 = contact_p.add_run("  •  ")
+        sep_r3 = contact_p.add_run("  -  ")
         sep_r3.font.size = Pt(8.5)
         sep_r3.font.color.rgb = BODY_COLOR
         self._add_hyperlink(contact_p, self.info["email"], f"mailto:{self.info['email']}", font_size=8.5)
-        sep_r4 = contact_p.add_run("  •  ")
+        sep_r4 = contact_p.add_run("  -  ")
         sep_r4.font.size = Pt(8.5)
         sep_r4.font.color.rgb = BODY_COLOR
         self._add_hyperlink(contact_p, self.info["website"], self.info["website"], font_size=8.5)
@@ -235,9 +235,21 @@ class CVBuilder:
                 dr.font.size = Pt(9)
                 dr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
 
-            for h in item.get("highlights", []):
+            doi_url = item.get("doi_url")
+            for i, h in enumerate(item.get("highlights", [])):
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
-                self._add_bullet_docx(doc, text)
+                if i == 0 and doi_url:
+                    bp = doc.add_paragraph()
+                    bp.paragraph_format.space_before = Pt(0)
+                    bp.paragraph_format.space_after = Pt(1)
+                    bp.paragraph_format.left_indent = Inches(0.25)
+                    bp.paragraph_format.first_line_indent = Inches(-0.15)
+                    bullet = bp.add_run("• ")
+                    bullet.font.size = Pt(9)
+                    bullet.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+                    self._add_hyperlink(bp, text, doi_url, font_size=9)
+                else:
+                    self._add_bullet_docx(doc, text)
 
     def _build_experience_section_docx(self, doc):
         for exp in self.info["experience"]:
@@ -593,24 +605,24 @@ class CVBuilder:
 
         # --- CONTACT ---
         def pdf_link_cell(text, url, is_last=False):
-            w = pdf.get_string_width(text)
             if url:
                 pdf.set_text_color(0, 0, 0)
                 pdf.set_draw_color(0, 0, 0)
                 x0 = pdf.get_x()
+                w = pdf.get_string_width(text)
                 pdf.cell(w, 6, text, link=url)
-                pdf.line(x0, pdf.get_y() + 5.5, pdf.get_x(), pdf.get_y() + 5.5)
+                pdf.line(x0, pdf.get_y() + 4.5, x0 + w, pdf.get_y() + 4.5)
             else:
                 pdf.set_text_color(*BODY_CLR)
-                pdf.cell(w, 6, text)
+                pdf.cell(pdf.get_string_width(text), 6, text)
             if not is_last:
                 pdf.set_text_color(*BODY_CLR)
-                sep_w = pdf.get_string_width("  •  ")
-                pdf.cell(sep_w, 6, "  •  ")
+                sep_w = pdf.get_string_width("  -  ")
+                pdf.cell(sep_w, 6, "  -  ")
 
         pdf.set_font("Calibri", "", 8.5)
         total_w = (pdf.get_string_width(self.info["location"]) +
-                   pdf.get_string_width("  •  ") * 4 +
+                   pdf.get_string_width("  -  ") * 4 +
                    pdf.get_string_width("LinkedIn") +
                    pdf.get_string_width("GitHub") +
                    pdf.get_string_width(self.info["email"]) +
@@ -663,12 +675,14 @@ class CVBuilder:
                 platform = proj.get("platform", "")
                 if platform and url:
                     pdf.set_font("Calibri", "", 9)
-                    plat_text = f" ({platform})"
+                    sp_w = pdf.get_string_width(" ")
+                    pdf.cell(sp_w, 5, " ")
+                    plat_text = f"({platform})"
                     plat_w = pdf.get_string_width(plat_text)
                     x0 = pdf.get_x()
                     pdf.cell(plat_w, 5, plat_text, link=url)
                     pdf.set_draw_color(0, 0, 0)
-                    pdf.line(x0, pdf.get_y() + 4.5, pdf.get_x(), pdf.get_y() + 4.5)
+                    pdf.line(x0, pdf.get_y() + 4, x0 + plat_w, pdf.get_y() + 4)
                 pdf.ln()
                 for h in proj.get("highlights", []):
                     text = h[2:].lstrip() if h and h[0] in '«»' else h
@@ -708,22 +722,34 @@ class CVBuilder:
             platform = item.get("platform", "")
             if platform and url:
                 pdf.set_font("Calibri", "", 9)
-                plat_text = f" ({platform})"
+                sp_w = pdf.get_string_width(" ")
+                pdf.cell(sp_w, 5, " ")
+                plat_text = f"({platform})"
                 plat_w = pdf.get_string_width(plat_text)
                 x0 = pdf.get_x()
                 pdf.cell(plat_w, 5, plat_text, link=url)
                 pdf.set_draw_color(0, 0, 0)
-                pdf.line(x0, pdf.get_y() + 4.5, pdf.get_x(), pdf.get_y() + 4.5)
+                pdf.line(x0, pdf.get_y() + 4, x0 + plat_w, pdf.get_y() + 4)
             pdf.ln()
             if item.get("description"):
                 pdf.set_font("Calibri", "", 9)
                 pdf.set_text_color(*BODY_CLR)
                 pdf.multi_cell(0, 4.5, item["description"])
             pdf.ln(1)
-            for h in item.get("highlights", []):
+            doi_url = item.get("doi_url")
+            for i, h in enumerate(item.get("highlights", [])):
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
-                pdf_bullet("•", text)
-            pdf.ln(2)
+                if i == 0 and doi_url:
+                    pdf.set_font("Calibri", "", 9)
+                    pdf.set_text_color(*BODY_CLR)
+                    x_start = pdf.l_margin + 3
+                    pdf.set_x(x_start)
+                    pdf.cell(5, 4.5, "•")
+                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, text, link=doi_url)
+                    pdf.set_x(x_start)
+                else:
+                    pdf_bullet("•", text)
+            pdf.ln(4)
 
         # --- SKILLS ---
         pdf_section("Skills")
