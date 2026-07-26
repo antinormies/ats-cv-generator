@@ -657,17 +657,19 @@ class CVBuilder:
                 pdf.set_text_color(0, 0, 0)
                 title = proj["title"]
                 extra = f" - {proj['company']}" if proj.get("company") else ""
-                pdf.cell(0, 5, f"{title}{extra}", new_x="LMARGIN", new_y="NEXT")
+                title_text = f"{title}{extra}"
+                pdf.cell(pdf.get_string_width(title_text), 5, title_text)
                 url = self.links.get(proj.get("url", ""), "")
                 platform = proj.get("platform", "")
                 if platform and url:
-                    pdf.set_font("Calibri", "", 8.5)
-                    pdf.set_text_color(0, 0, 0)
-                    pdf.set_draw_color(0, 0, 0)
+                    pdf.set_font("Calibri", "", 9)
+                    plat_text = f" ({platform})"
+                    plat_w = pdf.get_string_width(plat_text)
                     x0 = pdf.get_x()
-                    pdf.cell(pdf.get_string_width(f"({platform})"), 4.5, f"({platform})", link=url)
-                    pdf.line(x0, pdf.get_y() + 4, pdf.get_x(), pdf.get_y() + 4)
-                pdf.ln(2)
+                    pdf.cell(plat_w, 5, plat_text, link=url)
+                    pdf.set_draw_color(0, 0, 0)
+                    pdf.line(x0, pdf.get_y() + 4.5, pdf.get_x(), pdf.get_y() + 4.5)
+                pdf.ln()
                 for h in proj.get("highlights", []):
                     text = h[2:].lstrip() if h and h[0] in '«»' else h
                     pdf_bullet("•", text)
@@ -700,17 +702,19 @@ class CVBuilder:
         for item in self.info.get("portfolio", []):
             pdf.set_font("Calibri", "B", 10)
             pdf.set_text_color(0, 0, 0)
-            pdf.cell(0, 5, item["title"], new_x="LMARGIN", new_y="NEXT")
+            title_w = pdf.get_string_width(item["title"])
+            pdf.cell(title_w, 5, item["title"])
             url = self.links.get(item.get("url", ""), "")
             platform = item.get("platform", "")
             if platform and url:
-                pdf.set_font("Calibri", "", 8.5)
-                pdf.set_text_color(0, 0, 0)
-                pdf.set_draw_color(0, 0, 0)
+                pdf.set_font("Calibri", "", 9)
+                plat_text = f" ({platform})"
+                plat_w = pdf.get_string_width(plat_text)
                 x0 = pdf.get_x()
-                pdf.cell(pdf.get_string_width(f"({platform})"), 4.5, f"({platform})", link=url)
-                pdf.line(x0, pdf.get_y() + 4, pdf.get_x(), pdf.get_y() + 4)
-                pdf.ln(1)
+                pdf.cell(plat_w, 5, plat_text, link=url)
+                pdf.set_draw_color(0, 0, 0)
+                pdf.line(x0, pdf.get_y() + 4.5, pdf.get_x(), pdf.get_y() + 4.5)
+            pdf.ln()
             if item.get("description"):
                 pdf.set_font("Calibri", "", 9)
                 pdf.set_text_color(*BODY_CLR)
