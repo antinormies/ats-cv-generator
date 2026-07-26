@@ -1,6 +1,9 @@
 # Personal data (keep your real info out of git)
 data/personal_info.py
 
+# Environment variables (URL keys, secrets)
+.env
+
 # Generated output
 output/
 *.docx

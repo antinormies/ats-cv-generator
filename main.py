@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cv_builder import CVBuilder
 from ats_engine import ATSScorer, CVOptimizer
 from job_synthesizer import generate_job_postings, export_jobs_to_json
-from job_crawler.crawler import SOURCES, Scraper, deduplicate, crawler_job_to_ats
+from job_crawler.crawler import SOURCES, Scraper, deduplicate, crawler_job_to_ats, write_jobs_excel
 from ats_engine import ATSScorer, CVOptimizer, extract_cv_keywords
 
 try:
@@ -134,6 +134,7 @@ def main():
     parser.add_argument("--no-cv", action="store_true", help="Skip CV generation")
     parser.add_argument("--real-jobs", action="store_true", help="Score against real crawled jobs (CV-relevant keywords)")
     parser.add_argument("--crawler-sources", default="all", help="Crawler sources for --real-jobs")
+    parser.add_argument("--excel", action="store_true", help="Export crawled jobs to XLSX")
     args = parser.parse_args()
 
     print(f"{'='*60}")
@@ -166,11 +167,15 @@ def main():
                 print(f"    → ERROR: {e}")
         all_jobs = deduplicate(all_jobs)
         jobs = [crawler_job_to_ats(j) for j in all_jobs]
-        print(f"\n  Total unique jobs: {len(jobs)}")
+        print(f"  Total unique jobs: {len(jobs)}")
         job_path = os.path.join(OUTPUT_DIR, "crawled_jobs.json")
         with open(job_path, "w") as f:
             json.dump(jobs, f, indent=2)
-        print(f"  Saved to {job_path}")
+        print(f"  JSON saved to {job_path}")
+        if args.excel:
+            xlsx_path = os.path.join(OUTPUT_DIR, "crawled_jobs.xlsx")
+            write_jobs_excel(all_jobs, xlsx_path)
+            print(f"  Excel saved to {xlsx_path}")
     else:
         jobs = generate_jobs(args.jobs)
 

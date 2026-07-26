@@ -834,7 +834,6 @@ def _match_keywords(text: str, keywords: str) -> bool:
 
 SOURCES: dict[str, callable] = {
     # APIs (free, no key required)
-    "remoteok": scrape_remoteok,
     "remotive": scrape_remotive,
     "arbeitnow": scrape_arbeitnow,
     "himalayas": scrape_himalayas,
@@ -868,6 +867,49 @@ def crawler_job_to_ats(job: Job) -> dict:
         "source": job.source,
         "salary": job.salary,
     }
+
+def write_jobs_excel(jobs: list[Job | dict], path: str):
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Jobs"
+    headers = ["Title", "Company", "Location", "URL", "Source", "Salary",
+               "Tags", "Description", "Tech Stack", "Is Applied"]
+    ws.append(headers)
+    for col_idx, h in enumerate(headers, 1):
+        c = ws.cell(row=1, column=col_idx)
+        c.font = Font(bold=True)
+    alt_fill = PatternFill(start_color="F5F5F5", end_color="F5F5F5", fill_type="solid")
+    for i, j in enumerate(jobs, 2):
+        if isinstance(j, Job):
+            vals = [j.title, j.company, j.location, j.url, j.source,
+                    j.salary, ", ".join(j.tags), j.description, "", False]
+        else:
+            vals = [j.get("title", ""), j.get("company", ""), j.get("location", ""),
+                    j.get("url", ""), j.get("source", ""), j.get("salary", ""),
+                    "", "", ", ".join(j.get("tech_stack", [])), False]
+        ws.append(vals)
+        url_col = 4
+        url_val = vals[url_col - 1]
+        if url_val and str(url_val).startswith("http"):
+            cell = ws.cell(row=i, column=url_col)
+            cell.hyperlink = url_val
+            cell.font = Font(color="0563C1", underline="single")
+        if i % 2 == 0:
+            for col in range(1, len(headers) + 1):
+                ws.cell(row=i, column=col).fill = alt_fill
+    ws.auto_filter.ref = ws.dimensions
+    ws.freeze_panes = "A2"
+    for col in [1, 2, 3]:
+        ws.column_dimensions[chr(64 + col)].width = 30
+    ws.column_dimensions["D"].width = 50
+    for col in [5, 6, 7, 8, 9, 10]:
+        ws.column_dimensions[chr(64 + col)].width = 20
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    wb.save(path)
+    log.info(f"Excel saved to {path}")
+
 
 def _extract_tech_keywords(text: str) -> list[str]:
     stop_words = {
@@ -971,6 +1013,7 @@ def main():
     ap.add_argument("--output", "-o", default="jobs.json", help="Output JSON path")
     ap.add_argument("--proxy", "-p", default="", help="Proxy URL (e.g. http://user:pass@host:port)")
     ap.add_argument("--captcha-key", "-c", default="", help="2captcha/anticaptcha API key")
+    ap.add_argument("--excel", "-x", default="", help="Output XLSX path (adds is_applied column)")
     args = ap.parse_args()
 
     s = Scraper(proxy=args.proxy, captcha_key=args.captcha_key)
@@ -1001,6 +1044,9 @@ def main():
     with open(output_path, "w") as f:
         json.dump([asdict(j) for j in all_jobs], f, indent=2, default=str)
     log.info(f"Saved to {output_path}")
+
+    if args.excel:
+        write_jobs_excel(all_jobs, args.excel)
 
 
 if __name__ == "__main__":

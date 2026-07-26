@@ -327,19 +327,10 @@ def extract_cv_keywords(info: dict) -> str:
     keywords = set()
     keywords.update(s for s in info.get("skills", []) if len(s) > 2)
     for section in info.get("skills_sections", []):
-        for item in section.get("items", []):
-            if len(item) > 2:
-                keywords.add(item)
-    for exp in info.get("experience", []):
-        for h in exp.get("highlights", []):
-            for m in re.findall(r"\b[A-Z][a-zA-Z+#./]*(?:\s[A-Z][a-zA-Z+#./]*)*\b", h):
-                if len(m) > 2:
-                    keywords.add(m)
-    for p in info.get("latest_portfolio", []):
-        for h in p.get("highlights", []):
-            for m in re.findall(r"\b[A-Z][a-zA-Z+#./]*(?:\s[A-Z][a-zA-Z+#./]*)*\b", h):
-                if len(m) > 2:
-                    keywords.add(m)
+        if section.get("type") == "grid":
+            for item in section.get("items", []):
+                if len(item) > 2 and len(item.split()) <= 6:
+                    keywords.add(item)
     return " ".join(sorted(keywords))
 
 
