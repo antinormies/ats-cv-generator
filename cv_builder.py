@@ -652,7 +652,12 @@ class CVBuilder:
             pdf.set_x(x_start)
             pdf.cell(5, 4.5, sym)
             pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, text)
-            pdf.set_x(x_start)
+
+        def pdf_bullet_text(text):
+            pdf.set_font("Calibri", "", 9)
+            pdf.set_text_color(*BODY_CLR)
+            pdf.set_x(pdf.l_margin + 3)
+            pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - 3, 4.5, f"- {text}")
 
         # --- ABOUT ---
         pdf_section("About")
@@ -669,46 +674,29 @@ class CVBuilder:
                 pdf.set_text_color(0, 0, 0)
                 title = proj["title"]
                 extra = f" - {proj['company']}" if proj.get("company") else ""
-                title_text = f"{title}{extra}"
-                pdf.cell(pdf.get_string_width(title_text), 5, title_text)
-                url = self.links.get(proj.get("url", ""), "")
                 platform = proj.get("platform", "")
-                if platform and url:
-                    pdf.set_font("Calibri", "", 9)
-                    sp_w = pdf.get_string_width(" ")
-                    pdf.cell(sp_w, 5, " ")
-                    plat_text = f"({platform})"
-                    plat_w = pdf.get_string_width(plat_text)
-                    x0 = pdf.get_x()
-                    pdf.cell(plat_w, 5, plat_text, link=url)
-                    pdf.set_draw_color(0, 0, 0)
-                    pdf.line(x0, pdf.get_y() + 4, x0 + plat_w, pdf.get_y() + 4)
-                pdf.ln()
+                url = self.links.get(proj.get("url", ""), "")
+                plat_part = f" ({platform})" if platform else ""
+                pdf.cell(0, 5, f"{title}{extra}{plat_part}", new_x="LMARGIN", new_y="NEXT")
                 for h in proj.get("highlights", []):
                     text = h[2:].lstrip() if h and h[0] in '«»' else h
-                    pdf_bullet("•", text)
+                    pdf_bullet_text(text)
                 pdf.ln(2)
 
         # --- WORK EXPERIENCE ---
         pdf_section("Work Experience")
         for exp in self.info["experience"]:
-            # Company | Location
             pdf.set_font("Calibri", "B", 10)
             pdf.set_text_color(0, 0, 0)
-            pdf.cell(pdf.w - pdf.l_margin - pdf.r_margin - 50, 5, exp["company"])
-            pdf.set_font("Calibri", "", 9)
-            pdf.set_text_color(*BODY_CLR)
-            pdf.cell(50, 5, exp["location"], align="R", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 5, exp["company"], new_x="LMARGIN", new_y="NEXT")
 
-            # Role | Period
             pdf.set_font("Calibri", "", 9)
             pdf.set_text_color(*BODY_CLR)
-            pdf.cell(pdf.w - pdf.l_margin - pdf.r_margin - 50, 4.5, exp["role"])
-            pdf.cell(50, 4.5, exp["period"], align="R", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 4.5, f"{exp['role']} | {exp['period']} | {exp['location']}", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
             for h in exp["highlights"]:
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
-                pdf_bullet("•", text)
+                pdf_bullet_text(text)
             pdf.ln(2)
 
         # --- PERSONAL PORTFOLIO ---
@@ -716,21 +704,10 @@ class CVBuilder:
         for item in self.info.get("portfolio", []):
             pdf.set_font("Calibri", "B", 10)
             pdf.set_text_color(0, 0, 0)
-            title_w = pdf.get_string_width(item["title"])
-            pdf.cell(title_w, 5, item["title"])
-            url = self.links.get(item.get("url", ""), "")
             platform = item.get("platform", "")
-            if platform and url:
-                pdf.set_font("Calibri", "", 9)
-                sp_w = pdf.get_string_width(" ")
-                pdf.cell(sp_w, 5, " ")
-                plat_text = f"({platform})"
-                plat_w = pdf.get_string_width(plat_text)
-                x0 = pdf.get_x()
-                pdf.cell(plat_w, 5, plat_text, link=url)
-                pdf.set_draw_color(0, 0, 0)
-                pdf.line(x0, pdf.get_y() + 4, x0 + plat_w, pdf.get_y() + 4)
-            pdf.ln()
+            url = self.links.get(item.get("url", ""), "")
+            plat_part = f" ({platform})" if platform else ""
+            pdf.cell(0, 5, f"{item['title']}{plat_part}", new_x="LMARGIN", new_y="NEXT")
             if item.get("description"):
                 pdf.set_font("Calibri", "", 9)
                 pdf.set_text_color(*BODY_CLR)
@@ -742,13 +719,10 @@ class CVBuilder:
                 if i == 0 and doi_url:
                     pdf.set_font("Calibri", "", 9)
                     pdf.set_text_color(*BODY_CLR)
-                    x_start = pdf.l_margin + 3
-                    pdf.set_x(x_start)
-                    pdf.cell(5, 4.5, "•")
-                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, text, link=doi_url)
-                    pdf.set_x(x_start)
+                    pdf.set_x(pdf.l_margin + 3)
+                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - 3, 4.5, f"- {text}", link=doi_url)
                 else:
-                    pdf_bullet("•", text)
+                    pdf_bullet_text(text)
             pdf.ln(4)
 
         # --- SKILLS ---
@@ -763,29 +737,15 @@ class CVBuilder:
             if sec["type"] == "grid":
                 pdf.set_font("Calibri", "", 8.5)
                 pdf.set_text_color(*BODY_CLR)
-                items = sec["items"]
-                cols = 3
-                col_w = (pdf.w - pdf.l_margin - pdf.r_margin) / cols
-                for i, s in enumerate(items):
-                    c = i % cols
-                    if c == 0:
-                        pdf.set_x(pdf.l_margin)
-                    else:
-                        pdf.set_x(pdf.l_margin + c * col_w)
-                    pdf.cell(col_w, 4.5, f"• {s}")
-                    if c == cols - 1:
-                        pdf.ln(4.5)
-                if len(items) % cols != 0:
-                    pdf.ln(4.5)
+                for s in sec["items"]:
+                    pdf.set_x(pdf.l_margin + 3)
+                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - 3, 4.5, f"- {s}")
+                pdf.ln(1)
             elif sec["type"] == "bullets":
                 pdf.set_font("Calibri", "", 8.5)
                 pdf.set_text_color(*BODY_CLR)
                 for item in sec["items"]:
-                    x_start = pdf.l_margin + 3
-                    pdf.set_x(x_start)
-                    pdf.cell(5, 4.5, "•")
-                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, item)
-                    pdf.set_x(x_start)
+                    pdf_bullet_text(item)
             pdf.ln(2)
 
         # --- EDUCATION ---
