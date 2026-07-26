@@ -1,0 +1,144 @@
+# ============================================================================
+# REMOTE / IT / WEB3 JOB SOURCES — MASTER LIST
+# Target: Android / IT / Remote / Web3 roles worldwide
+# Excludes: LinkedIn, Upwork
+# Last updated: 2026-07-26
+# ============================================================================
+# Format: NAME | URL | TYPE | API/SCRAPE | ANTI-BOT | NOTES
+#   TYPE: board=job board, agg=aggregator, freelance, ats=company career API,
+#         company=direct employer page, community=forum/newsletter
+# ============================================================================
+
+# TIER 1 — FREE PUBLIC APIs (NO AUTH, NO BYPASS NEEDED)
+# ----------------------------------------------------------------------------
+# These sites expose JSON endpoints we can hit directly.
+
+remoteok          | https://remoteok.com/api              | board | API  | none     | 129K+ jobs, developer-focused
+remotive          | https://remotive.com/api/remote-jobs  | board | API  | none     | Curated tech/startup remote
+arbeitnow         | https://arbeitnow.com/api/job-board-api| board | API  | none     | EU + global remote jobs
+himalayas         | https://himalayas.app/jobs/api         | board | API  | none     | Remote-first, culture tags
+jobicy            | https://jobicy.com/api/v2/remote-jobs  | board | API  | none     | Remote + hybrid jobs
+4dayweek          | https://4dayweek.io/api                | board | API  | none     | 4-day work week filter
+findwork          | https://findwork.dev/api/jobs/         | board | API  | none     | Developer roles, tech stack filters (needs key but free)
+adzuna            | https://api.adzuna.com/v1/api/jobs     | agg   | API  | none     | Aggregator, needs free API key
+the muse          | https://www.themuse.com/developers/api/v2| board | API | none     | Company profiles + jobs
+devremote         | https://devremote.io/api/jobs          | board | API  | none     | Tech-focused remote only
+jobspresso        | https://jobspresso.co/api/v1           | board | API  | none     | Curated tech remote
+startupjobs       | https://startup.jobs/api/v1            | board | API  | none     | Startup jobs
+
+# TIER 2 — ATS CAREER PAGES (NO AUTH PUBLIC JSON APIs)
+# ----------------------------------------------------------------------------
+# Hit company career pages via their ATS provider. All no-auth.
+# Format: ats_provider:company_slug
+
+ats:greenhouse    | https://boards-api.greenhouse.io/v1/boards/{company}/jobs | ats | API | none | e.g. stripe, coinbase, okx
+ats:lever         | https://api.lever.co/v0/postings/{company}?mode=json       | ats | API | none | e.g. palantir, spotify
+ats:ashby         | https://api.ashbyhq.com/posting-api/job-board/{company}   | ats | API | none | e.g. openai, linear
+ats:workable      | https://{company}.workable.com/api/v1/jobs                 | ats | API | none | Many mid-size companies
+ats:smartrecruiters | https://api.smartrecruiters.com/v1/companies/{company}/postings | ats | API | none |
+
+# TIER 3 — SCRAPE REQUIRED (NO API, MAY NEED CLOUDFLARE BYPASS)
+# ----------------------------------------------------------------------------
+# These need HTML scraping. Some behind Cloudflare.
+
+weworkremotely    | https://weworkremotely.com            | board | scrape | low    | Oldest remote board, tech+creative
+remoteok_html     | https://remoteok.com/remote-dev-jobs  | board | scrape | cloudflare | Fallback if API down
+remotive_html     | https://remotive.com                  | board | scrape | low    | Fallback if API down
+remote.co         | https://remote.co/remote-jobs         | board | scrape | low    | Remote-first company profiles
+workingnomads     | https://www.workingnomads.com/jobs    | board | scrape | low    | Email curated jobs
+virtualvocations  | https://www.virtualvocations.com      | board | scrape | low    | Multi-industry remote
+skipdrive         | https://www.skipthedrive.com          | board | scrape | low    | Remote jobs, no signup
+pangian           | https://pangian.com                  | board | scrape | low    | Global remote jobs
+remoters          | https://remoters.net                  | board | scrape | low    | Remote tech jobs
+freshremote       | https://freshremote.work              | board | scrape | low    | Fresh daily remote jobs
+justremote        | https://justremote.co                 | board | scrape | low    | Remote job filter
+remoteplane       | https://remoteplane.com               | board | scrape | low    | Remote jobs
+remotehub         | https://remotehub.io                  | board | scrape | low    | Remote tech jobs
+remoteokr         | https://remoteokr.com                 | board | scrape | low    | Remote jobs
+outsourcely       | https://www.outsourcely.com           | board | scrape | low    | Remote startup jobs
+nocsok            | https://nocsok.com                    | board | scrape | low    | Remote jobs
+djangojobs        | https://www.djangojobs.net            | board | scrape | low    | Python/Django remote
+pythonjobs        | https://www.python.org/jobs           | board | scrape | low    | Python jobs
+remoteit          | https://remoteitjobs.com              | board | scrape | low    | IT remote jobs
+remoteml          | https://remoteml.com                  | board | scrape | low    | Machine Learning remote
+jobboardio        | https://www.jobboard.io               | board | scrape | low    | Remote jobs
+
+# TIER 4 — FREELANCE & MARKETPLACES
+# ----------------------------------------------------------------------------
+arc               | https://arc.dev                       | freelance | scrape | low    | Vetted remote dev, top 3%
+toptal            | https://www.toptal.com                | freelance | scrape | low    | Top 3% developers
+turing            | https://www.turing.com                | freelance | scrape | cloudflare | Remote dev jobs, AI matched
+lemon.io          | https://lemon.io                      | freelance | scrape | low    | Senior dev contracts, $50-90/hr
+gun.io            | https://gun.io                        | freelance | scrape | low    | Vetted devs for startups
+x-team            | https://x-team.com                    | freelance | scrape | low    | Remote dev teams
+hired             | https://hired.com                     | board | scrape | cloudflare | Reverse marketplace, companies apply to you
+dice              | https://www.dice.com                  | board | scrape | cloudflare | Tech-only board, contract roles
+builtin           | https://builtin.com/jobs              | board | scrape | low    | Tech hubs + remote
+stackoverflow     | https://stackoverflow.com/jobs        | board | scrape | low    | (Read-only, SO discontinued posting)
+hnhiring          | https://hnhiring.com                  | agg   | scrape | none   | Hacker News "Who's Hiring" aggregator
+whoishiring       | https://whoishiring.io                | agg   | scrape | low    | HN + other sources
+
+# TIER 5 — WEB3 / CRYPTO / BLOCKCHAIN
+# ----------------------------------------------------------------------------
+web3career        | https://web3.career                  | board | scrape | low    | 40K+ web3 jobs, biggest board
+cryptojobslist    | https://cryptojobslist.com            | board | scrape | low    | 572+ Web3 jobs, remote focus
+cryptojobs        | https://crypto.jobs                  | board | scrape | low    | 1367+ crypto jobs, 87% remote
+cryptojobscom     | https://crypto.jobs.com              | board | scrape | low    | Fastest-growing Web3 board
+web3vacancy       | https://web3vacancy.com              | board | scrape | low    | 2400+ live Web3 positions
+degensjobs        | https://degens.jobs                  | board | scrape | low    | DeFi-native protocols
+cryptogrind       | https://cryptogrind.com              | board | scrape | low    | Mixed full-time + freelance
+hired3            | https://hired3.io                    | board | scrape | low    | Protocols, DeFi, L2, wallets
+sailonchain       | https://sailonchain.com              | board | scrape | low    | Vetted non-profit Web3
+blockchainassoc   | https://blockchainassociation.org/jobs | board | scrape | low  | Policy + protocol roles
+superteamearn     | https://earn.superteam.fun           | board | scrape | low    | Solana bounties + gigs
+useweb3           | https://useweb3.xyz                  | board | scrape | low    | Web3 dev jobs
+remote3           | https://remote3.io                   | board | scrape | low    | Web3 remote jobs
+cryptocurrencyjobs| https://cryptocurrencyjobs.co        | board | scrape | low    | 15K+ crypto jobs
+
+# TIER 6 — STARTUP & VC JOB BOARDS
+# ----------------------------------------------------------------------------
+wellfound         | https://wellfound.com/jobs            | board | scrape | cloudflare | Startup jobs (AngelList rebrand)
+ycjobs            | https://www.workatastartup.com        | board | scrape | low    | Y Combinator startups
+startupjobby      | https://startup.jobs                  | board | scrape | low    | Startup jobs
+relocate          | https://relocate.me                   | board | scrape | low    | Tech jobs with relocation
+
+# TIER 7 — NITROUS AGGREGATORS (COVER MANY BOARDS IN ONE)
+# ----------------------------------------------------------------------------
+simplyhired       | https://www.simplyhired.com           | agg   | scrape | cloudflare | Aggregates 1000s of sources
+indeed            | https://www.indeed.com                | agg   | scrape | cloudflare | Largest aggregator
+glassdoor         | https://www.glassdoor.com             | agg   | scrape | cloudflare | Company reviews + jobs
+googleforjobs     | https://www.google.com/search?q=jobs  | agg   | scrape | google   | Google Jobs (custom search)
+jooble            | https://jooble.org                    | agg   | scrape | cloudflare | Aggregates 70+ countries
+ziprecruiter      | https://www.ziprecruiter.com          | agg   | scrape | cloudflare | AI matching
+careerbuilder     | https://www.careerbuilder.com         | agg   | scrape | cloudflare | US-focused
+monster           | https://www.monster.com               | agg   | scrape | cloudflare | General job board
+
+# TIER 8 — OTHER BOARDS & COMMUNITIES (NO API)
+# ----------------------------------------------------------------------------
+flexjobs          | https://www.flexjobs.com              | board | scrape | low    | Hand-vetted, subscription required
+remoteokr         | https://remoteokr.com                 | board | scrape | low    |
+nodedesk          | https://nodesk.co                     | board | scrape | low    | Remote tools + jobs
+europeremotely    | https://europeremotely.com            | board | scrape | low    | Europe-focused remote
+asiaremote        | https://remoteasiamatch.com           | board | scrape | low    | Asia-focused remote
+cloudpeeps        | https://www.cloudpeeps.com            | board | scrape | low    | Marketing/content remote
+
+# ----------------------------------------------------------------------------
+# RECOMMENDED TARGET COMPANIES — REMOTE-FIRST (apply directly)
+# ----------------------------------------------------------------------------
+# These companies are fully remote-first and hire globally:
+# GitLab, Automattic, Zapier, Deel, Remote.com, OysterHR, Toptal,
+# Hotjar, Buffer, Doist, Basecamp, Hubstaff, Toggl, Elastic,
+# Cloudflare, DigitalOcean, Vercel, Netlify, Supabase, Hugging Face,
+# Stripe, Auth0, Okta, Datadog, MongoDB, Atlassian (remote-friendly)
+
+# ============================================================================
+# BYPASS RECIPES
+# ============================================================================
+# 1. No bypass needed: remoteok, remotive, arbeitnow, himalayas, jobicy,
+#    4dayweek, greenhouse, lever, ashby, workable, smartrecruiters
+# 2. cloudscraper (zinzied fork): weworkremotely, remote.co, most tier 3-4
+# 3. curl_cffi (impersonate="chrome"): dice, indeed, glassdoor
+# 4. cloudscraper hybrid (captcha API): wellfound, turing, flexjobs
+# 5. Playwright + stealth: for sites that need full JS execution
+# 6. FlareSolverr Docker: Cloudflare Turnstile (last resort)
+# ============================================================================

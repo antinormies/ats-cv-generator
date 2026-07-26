@@ -43,6 +43,8 @@ class ATSScorer:
     def _full_text(self) -> str:
         parts = [self.info["summary"]]
         parts.extend(self.info["skills"])
+        for section in self.info.get("skills_sections", []):
+            parts.extend(section.get("items", []))
         for exp in self.info["experience"]:
             parts.extend(exp["highlights"])
         for p in self.info.get("latest_portfolio", []):
@@ -209,27 +211,48 @@ class ATSScorer:
             "published", "bachelor", "fields", "degree", "related",
             "age", "experience", "all", "india", "only",
         }
+        locality_terms = {"Remote", "United States", "San Francisco", "New York",
+                         "Los Angeles", "Chicago", "Austin", "Seattle", "Boston",
+                         "Denver", "Portland", "Miami", "Atlanta", "Dallas",
+                         "Houston", "Philadelphia", "Washington DC", "London",
+                         "Berlin", "Paris", "Amsterdam", "Toronto", "Vancouver",
+                         "Sydney", "Singapore", "Tokyo", "Bangalore", "Hyderabad",
+                         "Pune", "Chennai", "Mumbai", "California", "Texas",
+                         "New York City", "North America", "EMEA", "APAC"}
+        common_biz = {"About", "Job Type", "Full Time", "Part Time", "Contract",
+                      "Apply Now", "Learn More", "Share", "Save", "Description",
+                      "Qualifications", "Requirements", "Responsibilities",
+                      "Location", "Salary", "Perks", "Benefits", "Company",
+                      "Position", "Level", "Role", "Team", "Ideal Candidate",
+                      "Who We Are", "What You'll Do", "About Us", "Overview",
+                      "Key Responsibilities", "Preferred Qualifications"}
+        company_suffixes = {"Inc", "Inc.", "LLC", "Corp", "Corp.", "Ltd", "Co",
+                            "Co.", "Technologies", "Technology", "Solutions",
+                            "Services", "Systems", "Software", "Group", "Partners",
+                            "Global", "Industries", "Labs", "Ventures", "Capital"}
         tech_terms = re.findall(r"\b[A-Z][a-zA-Z+#./]*(?:\s[A-Z][a-zA-Z+#./]*)*\b", text)
         result = []
         for term in tech_terms:
-            t = term.strip()
+            t = term.strip().strip(".,;:!?")
             if not t or len(t) < 3:
                 continue
-            if t.lower() in stop_words:
+            if t.lower() in stop_words or t in locality_terms or t in common_biz:
                 continue
-            # Keep terms that look like tech keywords:
-            # 2+ word phrases (e.g. "Jetpack Compose", "Clean Architecture")
-            # OR single words that are clearly tech (capitalized, tech-sounding)
+            if t in company_suffixes or t.split()[-1] in company_suffixes:
+                continue
+            if "." in t and not t.endswith(".") and not t.startswith("http"):
+                continue
             words = t.split()
+            if len(words) >= 2 and (words[0] in common_biz or words[0] in locality_terms):
+                continue
             if len(words) >= 2:
                 result.append(t)
             elif len(words) == 1 and len(t) >= 4:
-                # Only include single-word tech terms that look like tech
                 techish = any(kw.lower() in t.lower() for kw in [
                     "kotlin", "java", "git", "sql", "api", "sdk", "ndk", "jni",
                     "ml", "ai", "mvvm", "mvi", "ci", "ui", "gpu", "cpu",
                     "rest", "http", "json", "xml", "rag", "cnn", "lstm",
-                    "di", "db", "qa",
+                    "di", "db", "qa", "aws", "gcp", "azure",
                 ])
                 if techish:
                     result.append(t)
@@ -243,6 +266,9 @@ class ATSScorer:
                     "Profiler", "Vulkan", "OpenCL", "Coroutines",
                     "Jetpack", "Material", "Agile", "Scrum", "Gradle",
                     "GraphQL", "Postman", "SonarQube", "Detekt",
+                    "Python", "React", "Angular", "Docker", "Kubernetes",
+                    "Linux", "MySQL", "Redis", "MongoDB", "PostgreSQL",
+                    "TensorFlow", "PyTorch", "Flutter", "Dart", "TypeScript",
                 }
                 if t in common_tech_singles:
                     result.append(t)
@@ -295,6 +321,26 @@ class ATSScorer:
         if len(self._full_text.split()) < 300:
             suggestions.append("Add more detail to your experience bullet points for better keyword coverage")
         return suggestions or ["Your CV is well-optimized for ATS!"]
+
+
+def extract_cv_keywords(info: dict) -> str:
+    keywords = set()
+    keywords.update(s for s in info.get("skills", []) if len(s) > 2)
+    for section in info.get("skills_sections", []):
+        for item in section.get("items", []):
+            if len(item) > 2:
+                keywords.add(item)
+    for exp in info.get("experience", []):
+        for h in exp.get("highlights", []):
+            for m in re.findall(r"\b[A-Z][a-zA-Z+#./]*(?:\s[A-Z][a-zA-Z+#./]*)*\b", h):
+                if len(m) > 2:
+                    keywords.add(m)
+    for p in info.get("latest_portfolio", []):
+        for h in p.get("highlights", []):
+            for m in re.findall(r"\b[A-Z][a-zA-Z+#./]*(?:\s[A-Z][a-zA-Z+#./]*)*\b", h):
+                if len(m) > 2:
+                    keywords.add(m)
+    return " ".join(sorted(keywords))
 
 
 class CVOptimizer:

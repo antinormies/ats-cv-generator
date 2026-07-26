@@ -22,6 +22,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cv_builder import CVBuilder
 from ats_engine import ATSScorer, CVOptimizer
 from job_synthesizer import generate_job_postings, export_jobs_to_json
+from job_crawler.crawler import SOURCES, Scraper, deduplicate, crawler_job_to_ats
+from ats_engine import ATSScorer, CVOptimizer, extract_cv_keywords
 
 try:
     from data.personal_info import PERSONAL_INFO
@@ -130,6 +132,8 @@ def main():
     parser.add_argument("--jobs", type=int, default=100, help="Number of synthetic jobs to generate")
     parser.add_argument("--all", action="store_true", help="Run full pipeline (generate + score + optimize)")
     parser.add_argument("--no-cv", action="store_true", help="Skip CV generation")
+    parser.add_argument("--real-jobs", action="store_true", help="Score against real crawled jobs (CV-relevant keywords)")
+    parser.add_argument("--crawler-sources", default="all", help="Crawler sources for --real-jobs")
     args = parser.parse_args()
 
     print(f"{'='*60}")
@@ -145,7 +149,30 @@ def main():
     else:
         builder = CVBuilder(PERSONAL_INFO, load_env_links())
 
-    jobs = generate_jobs(args.jobs)
+    if args.real_jobs:
+        cv_keywords = extract_cv_keywords(PERSONAL_INFO)
+        print(f"  CV-extracted keywords: {cv_keywords[:120]}...")
+        print()
+        s = Scraper()
+        all_jobs = []
+        selected = list(SOURCES.keys()) if args.crawler_sources == "all" else [x.strip() for x in args.crawler_sources.split(",") if x.strip()]
+        for name in selected:
+            print(f"  Crawling {name}...")
+            try:
+                jobs = SOURCES[name](s, keywords=cv_keywords)
+                all_jobs.extend(jobs)
+                print(f"    → {len(jobs)} jobs")
+            except Exception as e:
+                print(f"    → ERROR: {e}")
+        all_jobs = deduplicate(all_jobs)
+        jobs = [crawler_job_to_ats(j) for j in all_jobs]
+        print(f"\n  Total unique jobs: {len(jobs)}")
+        job_path = os.path.join(OUTPUT_DIR, "crawled_jobs.json")
+        with open(job_path, "w") as f:
+            json.dump(jobs, f, indent=2)
+        print(f"  Saved to {job_path}")
+    else:
+        jobs = generate_jobs(args.jobs)
 
     if args.score or args.all:
         score_cv(builder, jobs)

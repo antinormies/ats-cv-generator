@@ -1,0 +1,14 @@
+# Core scraping
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+fake-useragent>=1.5.0
+
+# Cloudflare bypass (zinzied fork)
+git+https://github.com/zinzied/cloudscraper.git
+
+# TLS fingerprint impersonation
+curl-cffi>=0.7.0
+
+# Full browser automation (for hard Cloudflare targets)
+playwright>=1.40.0
