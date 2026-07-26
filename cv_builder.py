@@ -592,12 +592,36 @@ class CVBuilder:
         pdf.cell(0, 5, self.info["title"], align="C", new_x="LMARGIN", new_y="NEXT")
 
         # --- CONTACT ---
+        def pdf_link_cell(text, url, is_last=False):
+            w = pdf.get_string_width(text)
+            if url:
+                pdf.set_text_color(0x22, 0x55, 0xCC)
+                pdf.set_draw_color(0x22, 0x55, 0xCC)
+                x0 = pdf.get_x()
+                pdf.cell(w, 6, text, link=url)
+                pdf.line(x0, pdf.get_y() + 5.5, pdf.get_x(), pdf.get_y() + 5.5)
+            else:
+                pdf.set_text_color(*BODY_CLR)
+                pdf.cell(w, 6, text)
+            if not is_last:
+                pdf.set_text_color(*BODY_CLR)
+                sep_w = pdf.get_string_width("  •  ")
+                pdf.cell(sep_w, 6, "  •  ")
+
         pdf.set_font("Calibri", "", 8.5)
-        pdf.set_text_color(*BODY_CLR)
-        contact_text = f"{self.info['location']}  •  LinkedIn  •  GitHub  •  {self.info['email']}  •  {self.info['website']}"
-        pdf.cell(0, 6, contact_text, align="C", new_x="LMARGIN", new_y="NEXT")
-        # PDF hyperlinks not natively supported by fpdf2 for clickable text in cells;
-        # metadata links will be added after output
+        total_w = (pdf.get_string_width(self.info["location"]) +
+                   pdf.get_string_width("  •  ") * 4 +
+                   pdf.get_string_width("LinkedIn") +
+                   pdf.get_string_width("GitHub") +
+                   pdf.get_string_width(self.info["email"]) +
+                   pdf.get_string_width(self.info["website"]))
+        pdf.set_x((pdf.w - total_w) / 2)
+        pdf_link_cell(self.info["location"], "")
+        pdf_link_cell("LinkedIn", self._normalize_url(self.info["linkedin"]))
+        pdf_link_cell("GitHub", self._normalize_url(self.info["github"]))
+        pdf_link_cell(self.info["email"], f"mailto:{self.info['email']}")
+        pdf_link_cell(self.info["website"], self._normalize_url(self.info["website"]), is_last=True)
+        pdf.ln()
 
         self._pdf_hr(pdf)
         pdf.ln(1)
