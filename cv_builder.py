@@ -51,11 +51,9 @@ class CVBuilder:
         tcPr.append(tcBorders)
 
     def _normalize_url(self, url: str) -> str:
-        if url.startswith("mailto:"):
+        if url.startswith(("mailto:", "http://", "https://")):
             return url
-        if not url.startswith(("http://", "https://")):
-            return f"https://{url}"
-        return url
+        return f"https://{url}"
 
     def _add_hyperlink(self, paragraph, text: str, url: str, font_size=9):
         url = self._normalize_url(url)
@@ -138,14 +136,25 @@ class CVBuilder:
         contact_p = doc.add_paragraph()
         contact_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         contact_p.paragraph_format.space_after = Pt(2)
-        parts = [
-            self.info["location"], "  •  ", "LinkedIn", "  •  ", "GitHub", "  •  ",
-            self.info["email"], "  •  ", self.info["website"],
-        ]
-        for ptext in parts:
-            r = contact_p.add_run(ptext)
-            r.font.size = Pt(8.5)
-            r.font.color.rgb = BODY_COLOR
+        loc_r = contact_p.add_run(self.info["location"])
+        loc_r.font.size = Pt(8.5)
+        loc_r.font.color.rgb = BODY_COLOR
+        sep_r = contact_p.add_run("  •  ")
+        sep_r.font.size = Pt(8.5)
+        sep_r.font.color.rgb = BODY_COLOR
+        self._add_hyperlink(contact_p, "LinkedIn", self.info["linkedin"], font_size=8.5)
+        sep_r2 = contact_p.add_run("  •  ")
+        sep_r2.font.size = Pt(8.5)
+        sep_r2.font.color.rgb = BODY_COLOR
+        self._add_hyperlink(contact_p, "GitHub", self.info["github"], font_size=8.5)
+        sep_r3 = contact_p.add_run("  •  ")
+        sep_r3.font.size = Pt(8.5)
+        sep_r3.font.color.rgb = BODY_COLOR
+        self._add_hyperlink(contact_p, self.info["email"], f"mailto:{self.info['email']}", font_size=8.5)
+        sep_r4 = contact_p.add_run("  •  ")
+        sep_r4.font.size = Pt(8.5)
+        sep_r4.font.color.rgb = BODY_COLOR
+        self._add_hyperlink(contact_p, self.info["website"], self.info["website"], font_size=8.5)
 
         self._add_hr(doc)
 
@@ -292,7 +301,7 @@ class CVBuilder:
             tr.font.size = Pt(10)
             tr.font.color.rgb = BLACK
             if proj.get("company"):
-                tr2 = p.add_run(f"  —  {proj['company']}")
+                tr2 = p.add_run(f" - {proj['company']}")
                 tr2.font.size = Pt(9)
                 tr2.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
             if platform and url:
@@ -587,6 +596,8 @@ class CVBuilder:
         pdf.set_text_color(*BODY_CLR)
         contact_text = f"{self.info['location']}  •  LinkedIn  •  GitHub  •  {self.info['email']}  •  {self.info['website']}"
         pdf.cell(0, 6, contact_text, align="C", new_x="LMARGIN", new_y="NEXT")
+        # PDF hyperlinks not natively supported by fpdf2 for clickable text in cells;
+        # metadata links will be added after output
 
         self._pdf_hr(pdf)
         pdf.ln(1)
@@ -621,7 +632,7 @@ class CVBuilder:
                 pdf.set_font("Calibri", "B", 10)
                 pdf.set_text_color(0, 0, 0)
                 title = proj["title"]
-                extra = f"  —  {proj['company']}" if proj.get("company") else ""
+                extra = f" - {proj['company']}" if proj.get("company") else ""
                 pdf.cell(0, 5, f"{title}{extra}", new_x="LMARGIN", new_y="NEXT")
                 pdf.ln(1)
                 for h in proj.get("highlights", []):
