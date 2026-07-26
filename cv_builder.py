@@ -1,6 +1,6 @@
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.oxml.ns import qn, nsdecls
 from docx.oxml import OxmlElement, parse_xml
 from fpdf import FPDF
@@ -8,6 +8,9 @@ import os
 import re
 
 from data.personal_info import PERSONAL_INFO
+
+
+BLACK = RGBColor(0x00, 0x00, 0x00)
 
 
 class CVBuilder:
@@ -28,6 +31,8 @@ class CVBuilder:
         "Google Play Console", "Play Store",
         "Adaptive Layout", "Jetpack",
         "Deep Learning", "On-Device", "Inference",
+        "Live2D", "sherpa-onnx", "Vulkan", "GGUF", "MMPROJ",
+        "Qwen", "MiniCPM", "CameraX", "LiteRT",
     ]
 
     def __init__(self, info: dict = None):
@@ -93,117 +98,274 @@ class CVBuilder:
     def build_docx(self, output_path: str) -> str:
         doc = Document()
         section = doc.sections[0]
-        section.top_margin = Inches(0.5)
-        section.bottom_margin = Inches(0.5)
-        section.left_margin = Inches(0.7)
-        section.right_margin = Inches(0.7)
+        section.top_margin = Inches(0.4)
+        section.bottom_margin = Inches(0.4)
+        section.left_margin = Inches(0.6)
+        section.right_margin = Inches(0.6)
 
         style = doc.styles["Normal"]
         font = style.font
         font.name = "Calibri"
-        font.size = Pt(10.5)
-        font.color.rgb = RGBColor(0x33, 0x33, 0x33)
-        style.paragraph_format.space_after = Pt(3)
+        font.size = Pt(10)
+        font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+        style.paragraph_format.space_after = Pt(2)
         style.paragraph_format.space_before = Pt(0)
-        style.paragraph_format.line_spacing = 1.08
+        style.paragraph_format.line_spacing = 1.05
+
+        TITLE_COLOR = RGBColor(0xA4, 0x9F, 0x9F)
+        SEC_COLOR = RGBColor(0x70, 0x68, 0x69)
+        BODY_COLOR = RGBColor(0x3C, 0x31, 0x32)
 
         # --- HEADER ---
         name_p = doc.add_paragraph()
         name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        name_run = name_p.add_run(self.info["name"])
+        name_p.paragraph_format.space_after = Pt(0)
+        name_run = name_p.add_run(self.info["name"].upper())
         name_run.bold = True
-        name_run.font.size = Pt(20)
-        name_run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x2E)
+        name_run.font.size = Pt(18)
+        name_run.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
 
         title_p = doc.add_paragraph()
         title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        title_p.paragraph_format.space_before = Pt(0)
+        title_p.paragraph_format.space_after = Pt(2)
         title_run = title_p.add_run(self.info["title"])
+        title_run.bold = True
         title_run.font.size = Pt(11)
-        title_run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+        title_run.font.color.rgb = TITLE_COLOR
 
         contact_p = doc.add_paragraph()
         contact_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        contact_items = []
-        if self.info["location"]:
-            r = contact_p.add_run(self.info["location"])
-            r.font.size = Pt(9)
-            r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            contact_items.append(True)
-        if self.info["linkedin"]:
-            if contact_items:
-                r = contact_p.add_run("  •  ")
-                r.font.size = Pt(9)
-                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            self._add_hyperlink(contact_p, "LinkedIn", self.info["linkedin"], font_size=9)
-            contact_items.append(True)
-        if self.info["github"]:
-            if contact_items:
-                r = contact_p.add_run("  •  ")
-                r.font.size = Pt(9)
-                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            self._add_hyperlink(contact_p, "GitHub", self.info["github"], font_size=9)
-            contact_items.append(True)
-        if self.info["email"]:
-            if contact_items:
-                r = contact_p.add_run("  •  ")
-                r.font.size = Pt(9)
-                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            self._add_hyperlink(contact_p, self.info["email"], f"mailto:{self.info['email']}", font_size=9)
-            contact_items.append(True)
-        if self.info["website"]:
-            if contact_items:
-                r = contact_p.add_run("  •  ")
-                r.font.size = Pt(9)
-                r.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
-            self._add_hyperlink(contact_p, self.info["website"], self.info["website"], font_size=9)
-            contact_items.append(True)
+        contact_p.paragraph_format.space_after = Pt(2)
+        parts = [
+            self.info["location"], "  •  ", "LinkedIn", "  •  ", "GitHub", "  •  ",
+            self.info["email"], "  •  ", self.info["website"],
+        ]
+        for ptext in parts:
+            r = contact_p.add_run(ptext)
+            r.font.size = Pt(8.5)
+            r.font.color.rgb = BODY_COLOR
 
         self._add_hr(doc)
 
-        def add_section(title, items_func):
+        def add_section(title):
             heading = doc.add_paragraph()
-            heading.paragraph_format.space_before = Pt(6)
-            heading.paragraph_format.space_after = Pt(3)
+            heading.paragraph_format.space_before = Pt(8)
+            heading.paragraph_format.space_after = Pt(2)
             run = heading.add_run(title.upper())
             run.bold = True
             run.font.size = Pt(11)
-            run.font.color.rgb = RGBColor(0x1A, 0x1A, 0x2E)
+            run.font.color.rgb = SEC_COLOR
             self._add_hr(doc)
-            items_func()
 
-        # --- PROFESSIONAL SUMMARY ---
-        add_section("Professional Summary", lambda: (
-            doc.add_paragraph(self.info["summary"])
-        ))
+        add_section("About")
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = Pt(4)
+        r = p.add_run(self.info["summary"])
+        r.font.size = Pt(9.5)
+        r.font.color.rgb = BODY_COLOR
 
-        # --- TECHNICAL SKILLS ---
-        add_section("Technical Skills", lambda: (
-            self._build_skills_section(doc)
-        ))
-
-        # --- LATEST PORTFOLIO (user's structure: portfolio first) ---
-        add_section("Latest Portfolio", lambda: (
-            self._build_portfolio_section(doc)
-        ))
-
-        # --- WORK EXPERIENCE ---
-        add_section("Work Experience", lambda: (
-            self._build_experience_section(doc)
-        ))
-
-        # --- PROJECTS ---
         if self.info.get("projects"):
-            add_section("Projects", lambda: (
-                self._build_projects_section(doc)
-            ))
+            add_section("Projects")
+            self._build_projects_section_docx(doc)
 
-        # --- EDUCATION ---
-        add_section("Education", lambda: (
-            self._build_education_section(doc)
-        ))
+        add_section("Work Experience")
+        self._build_experience_section_docx(doc)
+
+        add_section("Latest Portfolio")
+        self._build_portfolio_section_docx(doc)
+
+        add_section("Skills")
+        self._build_skills_section_docx(doc)
+
+        add_section("Education")
+        self._build_education_section_docx(doc)
 
         doc.save(output_path)
         return output_path
+
+    def _add_bullet_docx(self, doc, text):
+        bp = doc.add_paragraph()
+        bp.paragraph_format.space_before = Pt(0)
+        bp.paragraph_format.space_after = Pt(1)
+        bp.paragraph_format.left_indent = Inches(0.25)
+        bp.paragraph_format.first_line_indent = Inches(-0.15)
+        bullet = bp.add_run("•")
+        bullet.font.size = Pt(9)
+        bullet.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+        text_run = bp.add_run(text)
+        text_run.font.size = Pt(9)
+        text_run.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+
+    def _build_portfolio_section_docx(self, doc):
+        for project in self.info.get("latest_portfolio", []):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(1)
+            t = p.add_run(project["title"])
+            t.bold = True
+            t.font.size = Pt(10)
+            t.font.color.rgb = BLACK
+
+            if project.get("description"):
+                dp = doc.add_paragraph()
+                dp.paragraph_format.space_after = Pt(2)
+                dr = dp.add_run(project["description"])
+                dr.font.size = Pt(9)
+                dr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+
+            for h in project.get("highlights", []):
+                text = h[2:].lstrip() if h and h[0] in '«»' else h
+                self._add_bullet_docx(doc, text)
+
+    def _build_experience_section_docx(self, doc):
+        for exp in self.info["experience"]:
+            right_stop = Inches(6.2)
+
+            # Company | Location
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(5)
+            p.paragraph_format.space_after = Pt(0)
+            pPr = p._p.get_or_add_pPr()
+            tabs = OxmlElement("w:tabs")
+            tab = OxmlElement("w:tab")
+            tab.set(qn("w:val"), "right")
+            tab.set(qn("w:pos"), str(int(right_stop)))
+            tabs.append(tab)
+            pPr.append(tabs)
+            cr = p.add_run(exp["company"])
+            cr.bold = True
+            cr.font.size = Pt(10)
+            cr.font.color.rgb = BLACK
+            tr = p.add_run("\t")
+            tr.font.size = Pt(10)
+            lr = p.add_run(exp["location"])
+            lr.font.size = Pt(9)
+            lr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+
+            # Role | Period
+            rp = doc.add_paragraph()
+            rp.paragraph_format.space_before = Pt(0)
+            rp.paragraph_format.space_after = Pt(3)
+            rPr2 = rp._p.get_or_add_pPr()
+            tabs2 = OxmlElement("w:tabs")
+            tab2 = OxmlElement("w:tab")
+            tab2.set(qn("w:val"), "right")
+            tab2.set(qn("w:pos"), str(int(right_stop)))
+            tabs2.append(tab2)
+            rPr2.append(tabs2)
+            rr = rp.add_run(exp["role"])
+            rr.font.size = Pt(9)
+            rr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+            tr2 = rp.add_run("\t")
+            tr2.font.size = Pt(9)
+            dr = rp.add_run(exp["period"])
+            dr.font.size = Pt(9)
+            dr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+
+            for h in exp["highlights"]:
+                text = h[2:].lstrip() if h and h[0] in '«»' else h
+                self._add_bullet_docx(doc, text)
+
+    def _build_projects_section_docx(self, doc):
+        for proj in self.info.get("projects", []):
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(4)
+            p.paragraph_format.space_after = Pt(1)
+            tr = p.add_run(proj["title"])
+            tr.bold = True
+            tr.font.size = Pt(10)
+            tr.font.color.rgb = BLACK
+
+            if proj.get("links"):
+                lp = doc.add_paragraph()
+                lp.paragraph_format.space_after = Pt(2)
+                for plat, url in proj["links"].items():
+                    self._add_hyperlink(lp, f"{plat}", url, font_size=8)
+
+            for h in proj.get("highlights", []):
+                text = h[2:].lstrip() if h and h[0] in '«»' else h
+                self._add_bullet_docx(doc, text)
+
+    def _build_skills_section_docx(self, doc):
+        sections = self.info.get("skills_sections", [])
+        if not sections:
+            return
+
+        for sec in sections:
+            # Sub-section title
+            sp = doc.add_paragraph()
+            sp.paragraph_format.space_before = Pt(4)
+            sp.paragraph_format.space_after = Pt(2)
+            sr = sp.add_run(sec["title"])
+            sr.bold = True
+            sr.font.size = Pt(9)
+            sr.font.color.rgb = RGBColor(0x70, 0x68, 0x69)
+
+            if sec["type"] == "grid":
+                items = sec["items"]
+                cols = 3
+                rows = (len(items) + cols - 1) // cols
+                table = doc.add_table(rows=rows, cols=cols)
+                table.autofit = True
+                for i, s in enumerate(items):
+                    row = i // cols
+                    col = i % cols
+                    cell = table.cell(row, col)
+                    cell.text = ""
+                    p = cell.paragraphs[0]
+                    p.paragraph_format.space_before = Pt(1)
+                    p.paragraph_format.space_after = Pt(1)
+                    dot = p.add_run("•")
+                    dot.font.size = Pt(8.5)
+                    dot.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+                    tr = p.add_run(s)
+                    tr.font.size = Pt(8.5)
+                    tr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+                for row in table.rows:
+                    for cell in row.cells:
+                        for paragraph in cell.paragraphs:
+                            paragraph.paragraph_format.space_before = Pt(0)
+                            paragraph.paragraph_format.space_after = Pt(1)
+                        tc = cell._tc
+                        tcPr = tc.get_or_add_tcPr()
+                        tcBorders = OxmlElement("w:tcBorders")
+                        for edge in ["top", "left", "bottom", "right"]:
+                            element = OxmlElement(f"w:{edge}")
+                            element.set(qn("w:val"), "none")
+                            element.set(qn("w:sz"), "0")
+                            element.set(qn("w:space"), "0")
+                            element.set(qn("w:color"), "auto")
+                            tcBorders.append(element)
+                        tcPr.append(tcBorders)
+            elif sec["type"] == "bullets":
+                for item in sec["items"]:
+                    bp = doc.add_paragraph()
+                    bp.paragraph_format.space_before = Pt(0)
+                    bp.paragraph_format.space_after = Pt(1)
+                    bp.paragraph_format.left_indent = Inches(0.25)
+                    bp.paragraph_format.first_line_indent = Inches(-0.15)
+                    dot = bp.add_run("•")
+                    dot.font.size = Pt(8.5)
+                    dot.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+                    tr = bp.add_run(item)
+                    tr.font.size = Pt(8.5)
+                    tr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+
+    def _build_education_section_docx(self, doc):
+        for edu in self.info["education"]:
+            p = doc.add_paragraph()
+            p.paragraph_format.space_before = Pt(3)
+            pr = p.add_run(f"{edu['school']}")
+            pr.bold = True
+            pr.font.size = Pt(10)
+            pr.font.color.rgb = BLACK
+
+            dp = doc.add_paragraph()
+            dp.paragraph_format.space_after = Pt(2)
+            dr = dp.add_run(edu["degree"])
+            dr.font.size = Pt(9)
+            dr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
 
     def _build_skills_section(self, doc):
         p = doc.add_paragraph()
@@ -379,188 +541,157 @@ class CVBuilder:
                 self.set_text_color(150, 150, 150)
                 self.cell(0, 10, f"Page {self.page_no()}/{{nb}}", align="C")
 
+        TITLE_CLR = (164, 159, 159)
+        SEC_CLR = (112, 104, 105)
+        BODY_CLR = (60, 49, 50)
+
         pdf = CVPDF()
         pdf.alias_nb_pages()
-        pdf.set_auto_page_break(auto=True, margin=20)
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
-        pdf.set_margins(15, 12, 15)
+        pdf.set_margins(14, 10, 14)
+        pdf.add_font("Calibri", "", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf")
+        pdf.add_font("Calibri", "B", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf")
 
-        # --- HEADER ---
-        pdf.set_font("Helvetica", "B", 22)
-        pdf.set_text_color(26, 26, 46)
-        pdf.cell(0, 9, self.info["name"], align="C", new_x="LMARGIN", new_y="NEXT")
-        pdf.set_font("Helvetica", "", 11)
-        pdf.set_text_color(85, 85, 85)
-        pdf.cell(0, 7, self.info["title"], align="C", new_x="LMARGIN", new_y="NEXT")
+        # --- NAME ---
+        pdf.set_font("Calibri", "B", 18)
+        pdf.set_text_color(*BODY_CLR)
+        pdf.cell(0, 8, self.info["name"].upper(), align="C", new_x="LMARGIN", new_y="NEXT")
 
-        pdf.set_font("Helvetica", "", 8.5)
-        pdf.set_text_color(102, 102, 102)
-        contact_items = []
-        if self.info.get("location"):
-            contact_items.append(("text", self.info["location"], None))
-        if self.info.get("linkedin"):
-            contact_items.append(("link", "LinkedIn", self._normalize_url(self.info["linkedin"])))
-        if self.info.get("github"):
-            contact_items.append(("link", "GitHub", self._normalize_url(self.info["github"])))
-        if self.info.get("email"):
-            contact_items.append(("link", self.info["email"], f"mailto:{self.info['email']}"))
-        if self.info.get("website"):
-            contact_items.append(("link", self.info["website"], self._normalize_url(self.info["website"])))
-        total_w = 0
-        for idx, (ctype, text, url) in enumerate(contact_items):
-            if idx > 0:
-                total_w += pdf.get_string_width("  |  ")
-            total_w += pdf.get_string_width(text)
-        x_cur = (pdf.w - total_w) / 2
-        y_pos = pdf.get_y()
-        for idx, (ctype, text, url) in enumerate(contact_items):
-            if idx > 0:
-                sep = "  |  "
-                sw = pdf.get_string_width(sep)
-                pdf.set_xy(x_cur, y_pos)
-                pdf.cell(sw, 6, sep)
-                x_cur += sw
-            tw = pdf.get_string_width(text)
-            pdf.set_xy(x_cur, y_pos)
-            if ctype == "link":
-                pdf.set_text_color(34, 85, 204)
-                pdf.cell(tw, 6, text)
-                pdf.link(x_cur, y_pos, tw, 6, url)
-                pdf.set_text_color(102, 102, 102)
-            else:
-                pdf.cell(tw, 6, text)
-            x_cur += tw
-        pdf.set_y(y_pos + 6)
-        pdf.ln(3)
+        # --- TITLE ---
+        pdf.set_font("Calibri", "B", 11)
+        pdf.set_text_color(*TITLE_CLR)
+        pdf.cell(0, 5, self.info["title"], align="C", new_x="LMARGIN", new_y="NEXT")
+
+        # --- CONTACT ---
+        pdf.set_font("Calibri", "", 8.5)
+        pdf.set_text_color(*BODY_CLR)
+        contact_text = f"{self.info['location']}  •  LinkedIn  •  GitHub  •  {self.info['email']}  •  {self.info['website']}"
+        pdf.cell(0, 6, contact_text, align="C", new_x="LMARGIN", new_y="NEXT")
+
         self._pdf_hr(pdf)
-        pdf.ln(2)
+        pdf.ln(1)
 
-        # --- SUMMARY ---
-        self._pdf_section_header(pdf, "Professional Summary")
-        pdf.set_font("Helvetica", "", 9.5)
-        pdf.set_text_color(51, 51, 51)
-        pdf.multi_cell(0, 5, self.info["summary"])
-        pdf.ln(2)
-
-        # --- SKILLS ---
-        self._pdf_section_header(pdf, "Technical Skills")
-        pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(51, 51, 51)
-        skills_text = ", ".join(self.info["skills"])
-        pdf.multi_cell(0, 4.5, skills_text)
-        pdf.ln(2)
-
-        # --- PORTFOLIO ---
-        self._pdf_section_header(pdf, "Latest Portfolio")
-        for project in self.info.get("latest_portfolio", []):
-            pdf.set_font("Helvetica", "B", 10)
-            pdf.set_text_color(26, 26, 46)
-            pdf.cell(0, 5.5, project["title"], new_x="LMARGIN", new_y="NEXT")
-            if project.get("links"):
-                pdf.set_font("Helvetica", "", 8.5)
-                y_links = pdf.get_y()
-                x_link = pdf.l_margin
-                for lidx, (platform, url) in enumerate(project["links"].items()):
-                    if lidx > 0:
-                        pdf.set_xy(x_link, y_links)
-                        sw = pdf.get_string_width("  |  ")
-                        pdf.cell(sw, 4.5, "  |  ")
-                        x_link += sw
-                    pdf.set_text_color(34, 85, 204)
-                    lw = pdf.get_string_width(platform)
-                    pdf.set_xy(x_link, y_links)
-                    pdf.cell(lw, 4.5, platform)
-                    pdf.link(x_link, y_links, lw, 4.5, self._normalize_url(url))
-                    pdf.set_text_color(26, 26, 46)
-                    x_link += lw
-                pdf.set_y(y_links + 4.5)
-            if project.get("description"):
-                pdf.set_font("Helvetica", "I", 9)
-                pdf.set_text_color(85, 85, 85)
-                pdf.multi_cell(0, 4.5, project["description"])
+        def pdf_section(title):
+            pdf.set_font("Calibri", "B", 11)
+            pdf.set_text_color(*SEC_CLR)
+            pdf.cell(0, 6, title.upper(), new_x="LMARGIN", new_y="NEXT")
+            self._pdf_hr(pdf)
             pdf.ln(1)
-            pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(51, 51, 51)
-            for h in project.get("highlights", []):
-                x = pdf.get_x()
-                pdf.cell(5, 4.5, "-")
-                pdf.multi_cell(0, 4.5, f" {h}")
-                pdf.set_x(x)
-            pdf.ln(2)
 
-        # --- WORK EXPERIENCE ---
-        self._pdf_section_header(pdf, "Work Experience")
-        for exp in self.info["experience"]:
-            pdf.set_font("Helvetica", "B", 10)
-            pdf.set_text_color(26, 26, 46)
-            pdf.cell(0, 5.5, f"{exp['role']}  |  {exp['company']}", new_x="LMARGIN", new_y="NEXT")
-            pdf.set_font("Helvetica", "I", 8.5)
-            pdf.set_text_color(119, 119, 119)
-            pdf.cell(0, 4.5, f"{exp['period']}  |  {exp['location']}", new_x="LMARGIN", new_y="NEXT")
-            pdf.ln(1)
-            pdf.set_font("Helvetica", "", 9)
-            pdf.set_text_color(51, 51, 51)
-            for h in exp["highlights"]:
-                x = pdf.get_x()
-                pdf.cell(5, 4.5, "-")
-                pdf.multi_cell(0, 4.5, f" {h}")
-                pdf.set_x(x)
-            pdf.ln(2)
+        def pdf_bullet(sym, text):
+            pdf.set_font("Calibri", "", 9)
+            pdf.set_text_color(*BODY_CLR)
+            x_start = pdf.l_margin + 3
+            pdf.set_x(x_start)
+            pdf.cell(5, 4.5, sym)
+            pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, text)
+            pdf.set_x(x_start)
+
+        # --- ABOUT ---
+        pdf_section("About")
+        pdf.set_font("Calibri", "", 9.5)
+        pdf.set_text_color(*BODY_CLR)
+        pdf.multi_cell(0, 4.8, self.info["summary"])
+        pdf.ln(1)
 
         # --- PROJECTS ---
         if self.info.get("projects"):
-            self._pdf_section_header(pdf, "Projects")
+            pdf_section("Projects")
             for proj in self.info["projects"]:
-                pdf.set_font("Helvetica", "B", 10)
-                pdf.set_text_color(26, 26, 46)
-                proj_title = proj["title"]
-                if proj.get("company"):
-                    proj_title += f"  -  {proj['company']}"
-                pdf.cell(0, 5.5, proj_title, new_x="LMARGIN", new_y="NEXT")
-                if proj.get("links"):
-                    pdf.set_font("Helvetica", "", 8.5)
-                    y_links = pdf.get_y()
-                    x_link = pdf.l_margin
-                    for lidx, (platform, url) in enumerate(proj["links"].items()):
-                        if lidx > 0:
-                            pdf.set_xy(x_link, y_links)
-                            sw = pdf.get_string_width("  |  ")
-                            pdf.cell(sw, 4.5, "  |  ")
-                            x_link += sw
-                        pdf.set_text_color(34, 85, 204)
-                        lw = pdf.get_string_width(platform)
-                        pdf.set_xy(x_link, y_links)
-                        pdf.cell(lw, 4.5, platform)
-                        pdf.link(x_link, y_links, lw, 4.5, self._normalize_url(url))
-                        pdf.set_text_color(26, 26, 46)
-                        x_link += lw
-                    pdf.set_y(y_links + 4.5)
+                pdf.set_font("Calibri", "B", 10)
+                pdf.set_text_color(0, 0, 0)
+                pdf.cell(0, 5, proj["title"], new_x="LMARGIN", new_y="NEXT")
                 pdf.ln(1)
-                pdf.set_font("Helvetica", "", 9)
-                pdf.set_text_color(51, 51, 51)
                 for h in proj.get("highlights", []):
-                    x = pdf.get_x()
-                    pdf.cell(5, 4.5, "-")
-                    pdf.multi_cell(0, 4.5, f" {h}")
-                    pdf.set_x(x)
+                    text = h[2:].lstrip() if h and h[0] in '«»' else h
+                    pdf_bullet("•", text)
                 pdf.ln(2)
 
-        # --- EDUCATION ---
-        self._pdf_section_header(pdf, "Education")
-        for edu in self.info["education"]:
-            pdf.set_font("Helvetica", "B", 10)
-            pdf.set_text_color(26, 26, 46)
-            edu_line = edu["degree"]
-            if edu.get("school"):
-                edu_line += f"  -  {edu['school']}"
-            pdf.cell(0, 5.5, edu_line, new_x="LMARGIN", new_y="NEXT")
-            if edu.get("period") or edu.get("gpa"):
-                pdf.set_font("Helvetica", "I", 8.5)
-                pdf.set_text_color(119, 119, 119)
-                parts = [x for x in [edu.get("period", ""), edu.get("gpa", "")] if x]
-                if parts:
-                    pdf.cell(0, 4.5, "  |  ".join(parts), new_x="LMARGIN", new_y="NEXT")
+        # --- WORK EXPERIENCE ---
+        pdf_section("Work Experience")
+        for exp in self.info["experience"]:
+            # Company | Location
+            pdf.set_font("Calibri", "B", 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(pdf.w - pdf.l_margin - pdf.r_margin - 50, 5, exp["company"])
+            pdf.set_font("Calibri", "", 9)
+            pdf.set_text_color(*BODY_CLR)
+            pdf.cell(50, 5, exp["location"], align="R", new_x="LMARGIN", new_y="NEXT")
+
+            # Role | Period
+            pdf.set_font("Calibri", "", 9)
+            pdf.set_text_color(*BODY_CLR)
+            pdf.cell(pdf.w - pdf.l_margin - pdf.r_margin - 50, 4.5, exp["role"])
+            pdf.cell(50, 4.5, exp["period"], align="R", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(2)
+            for h in exp["highlights"]:
+                text = h[2:].lstrip() if h and h[0] in '«»' else h
+                pdf_bullet("•", text)
+            pdf.ln(2)
+
+        # --- PORTFOLIO ---
+        pdf_section("Latest Portfolio")
+        for project in self.info.get("latest_portfolio", []):
+            pdf.set_font("Calibri", "B", 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(0, 5, project["title"], new_x="LMARGIN", new_y="NEXT")
+            if project.get("description"):
+                pdf.set_font("Calibri", "", 9)
+                pdf.set_text_color(*BODY_CLR)
+                pdf.multi_cell(0, 4.5, project["description"])
+            pdf.ln(1)
+            for h in project.get("highlights", []):
+                text = h[2:].lstrip() if h and h[0] in '«»' else h
+                pdf_bullet("•", text)
+            pdf.ln(2)
+
+        # --- SKILLS ---
+        pdf_section("Skills")
+        sections = self.info.get("skills_sections", [])
+        for sec in sections:
+            pdf.set_font("Calibri", "B", 9)
+            pdf.set_text_color(*SEC_CLR)
+            pdf.cell(0, 5, sec["title"], new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(1)
+
+            if sec["type"] == "grid":
+                pdf.set_font("Calibri", "", 8.5)
+                pdf.set_text_color(*BODY_CLR)
+                items = sec["items"]
+                cols = 3
+                col_w = (pdf.w - pdf.l_margin - pdf.r_margin) / cols
+                for i, s in enumerate(items):
+                    c = i % cols
+                    if c == 0:
+                        pdf.set_x(pdf.l_margin)
+                    else:
+                        pdf.set_x(pdf.l_margin + c * col_w)
+                    pdf.cell(col_w, 4.5, f"•{s}")
+                    if c == cols - 1:
+                        pdf.ln(4.5)
+                if len(items) % cols != 0:
+                    pdf.ln(4.5)
+            elif sec["type"] == "bullets":
+                pdf.set_font("Calibri", "", 8.5)
+                pdf.set_text_color(*BODY_CLR)
+                for item in sec["items"]:
+                    x_start = pdf.l_margin + 3
+                    pdf.set_x(x_start)
+                    pdf.cell(5, 4.5, "•")
+                    pdf.multi_cell(pdf.w - pdf.l_margin - pdf.r_margin - x_start - 5, 4.5, item)
+                    pdf.set_x(x_start)
+            pdf.ln(2)
+
+        # --- EDUCATION ---
+        pdf_section("Education")
+        for edu in self.info["education"]:
+            pdf.set_font("Calibri", "B", 10)
+            pdf.set_text_color(0, 0, 0)
+            pdf.cell(0, 5, edu["school"], new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Calibri", "", 9)
+            pdf.set_text_color(*BODY_CLR)
+            pdf.cell(0, 4.5, edu["degree"], new_x="LMARGIN", new_y="NEXT")
 
         pdf.output(output_path)
         return output_path
