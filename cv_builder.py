@@ -64,7 +64,7 @@ class CVBuilder:
         new_run = OxmlElement("w:r")
         rPr = OxmlElement("w:rPr")
         c = OxmlElement("w:color")
-        c.set(qn("w:val"), "2255CC")
+        c.set(qn("w:val"), "000000")
         rPr.append(c)
         u = OxmlElement("w:u")
         u.set(qn("w:val"), "single")
@@ -344,7 +344,7 @@ class CVBuilder:
                     p = cell.paragraphs[0]
                     p.paragraph_format.space_before = Pt(1)
                     p.paragraph_format.space_after = Pt(1)
-                    dot = p.add_run("•")
+                    dot = p.add_run("• ")
                     dot.font.size = Pt(8.5)
                     dot.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
                     tr = p.add_run(s)
@@ -595,8 +595,8 @@ class CVBuilder:
         def pdf_link_cell(text, url, is_last=False):
             w = pdf.get_string_width(text)
             if url:
-                pdf.set_text_color(0x22, 0x55, 0xCC)
-                pdf.set_draw_color(0x22, 0x55, 0xCC)
+                pdf.set_text_color(0, 0, 0)
+                pdf.set_draw_color(0, 0, 0)
                 x0 = pdf.get_x()
                 pdf.cell(w, 6, text, link=url)
                 pdf.line(x0, pdf.get_y() + 5.5, pdf.get_x(), pdf.get_y() + 5.5)
@@ -658,7 +658,16 @@ class CVBuilder:
                 title = proj["title"]
                 extra = f" - {proj['company']}" if proj.get("company") else ""
                 pdf.cell(0, 5, f"{title}{extra}", new_x="LMARGIN", new_y="NEXT")
-                pdf.ln(1)
+                url = self.links.get(proj.get("url", ""), "")
+                platform = proj.get("platform", "")
+                if platform and url:
+                    pdf.set_font("Calibri", "", 8.5)
+                    pdf.set_text_color(0, 0, 0)
+                    pdf.set_draw_color(0, 0, 0)
+                    x0 = pdf.get_x()
+                    pdf.cell(pdf.get_string_width(f"({platform})"), 4.5, f"({platform})", link=url)
+                    pdf.line(x0, pdf.get_y() + 4, pdf.get_x(), pdf.get_y() + 4)
+                pdf.ln(2)
                 for h in proj.get("highlights", []):
                     text = h[2:].lstrip() if h and h[0] in '«»' else h
                     pdf_bullet("•", text)
@@ -692,6 +701,16 @@ class CVBuilder:
             pdf.set_font("Calibri", "B", 10)
             pdf.set_text_color(0, 0, 0)
             pdf.cell(0, 5, item["title"], new_x="LMARGIN", new_y="NEXT")
+            url = self.links.get(item.get("url", ""), "")
+            platform = item.get("platform", "")
+            if platform and url:
+                pdf.set_font("Calibri", "", 8.5)
+                pdf.set_text_color(0, 0, 0)
+                pdf.set_draw_color(0, 0, 0)
+                x0 = pdf.get_x()
+                pdf.cell(pdf.get_string_width(f"({platform})"), 4.5, f"({platform})", link=url)
+                pdf.line(x0, pdf.get_y() + 4, pdf.get_x(), pdf.get_y() + 4)
+                pdf.ln(1)
             if item.get("description"):
                 pdf.set_font("Calibri", "", 9)
                 pdf.set_text_color(*BODY_CLR)
@@ -723,7 +742,7 @@ class CVBuilder:
                         pdf.set_x(pdf.l_margin)
                     else:
                         pdf.set_x(pdf.l_margin + c * col_w)
-                    pdf.cell(col_w, 4.5, f"•{s}")
+                    pdf.cell(col_w, 4.5, f"• {s}")
                     if c == cols - 1:
                         pdf.ln(4.5)
                 if len(items) % cols != 0:
