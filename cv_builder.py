@@ -35,8 +35,9 @@ class CVBuilder:
         "Qwen", "MiniCPM", "CameraX", "LiteRT",
     ]
 
-    def __init__(self, info: dict = None):
+    def __init__(self, info: dict = None, links: dict = None):
         self.info = info or PERSONAL_INFO
+        self.links = links or {}
 
     def _set_cell_border(self, cell, **kwargs):
         tc = cell._tc
@@ -165,14 +166,14 @@ class CVBuilder:
         r.font.size = Pt(9.5)
         r.font.color.rgb = BODY_COLOR
 
-        if self.info.get("projects"):
-            add_section("Projects")
-            self._build_projects_section_docx(doc)
+        if self.info.get("company_projects"):
+            add_section("Company Projects")
+            self._build_company_projects_section_docx(doc)
 
         add_section("Work Experience")
         self._build_experience_section_docx(doc)
 
-        add_section("Latest Portfolio")
+        add_section("Personal Portfolio")
         self._build_portfolio_section_docx(doc)
 
         add_section("Skills")
@@ -198,23 +199,34 @@ class CVBuilder:
         text_run.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
 
     def _build_portfolio_section_docx(self, doc):
-        for project in self.info.get("latest_portfolio", []):
+        for item in self.info.get("portfolio", []):
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(4)
             p.paragraph_format.space_after = Pt(1)
-            t = p.add_run(project["title"])
-            t.bold = True
-            t.font.size = Pt(10)
-            t.font.color.rgb = BLACK
+            url = self.links.get(item.get("url", ""), "")
+            platform = item.get("platform", "")
+            title = item["title"]
+            if platform and url:
+                p.add_run(title).bold = True
+                p.runs[-1].font.size = Pt(10)
+                p.runs[-1].font.color.rgb = BLACK
+                p.add_run("  (").font.size = Pt(9)
+                self._add_hyperlink(p, platform, url, font_size=9)
+                p.add_run(")").font.size = Pt(9)
+            else:
+                t = p.add_run(title)
+                t.bold = True
+                t.font.size = Pt(10)
+                t.font.color.rgb = BLACK
 
-            if project.get("description"):
+            if item.get("description"):
                 dp = doc.add_paragraph()
                 dp.paragraph_format.space_after = Pt(2)
-                dr = dp.add_run(project["description"])
+                dr = dp.add_run(item["description"])
                 dr.font.size = Pt(9)
                 dr.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
 
-            for h in project.get("highlights", []):
+            for h in item.get("highlights", []):
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
                 self._add_bullet_docx(doc, text)
 
@@ -267,21 +279,28 @@ class CVBuilder:
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
                 self._add_bullet_docx(doc, text)
 
-    def _build_projects_section_docx(self, doc):
-        for proj in self.info.get("projects", []):
+    def _build_company_projects_section_docx(self, doc):
+        for proj in self.info.get("company_projects", []):
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(4)
             p.paragraph_format.space_after = Pt(1)
-            tr = p.add_run(proj["title"])
+            url = self.links.get(proj.get("url", ""), "")
+            platform = proj.get("platform", "")
+            title = proj["title"]
+            tr = p.add_run(title)
             tr.bold = True
             tr.font.size = Pt(10)
             tr.font.color.rgb = BLACK
-
-            if proj.get("links"):
-                lp = doc.add_paragraph()
-                lp.paragraph_format.space_after = Pt(2)
-                for plat, url in proj["links"].items():
-                    self._add_hyperlink(lp, f"{plat}", url, font_size=8)
+            if proj.get("company"):
+                tr2 = p.add_run(f"  —  {proj['company']}")
+                tr2.font.size = Pt(9)
+                tr2.font.color.rgb = RGBColor(0x3C, 0x31, 0x32)
+            if platform and url:
+                sp = p.add_run("  (")
+                sp.font.size = Pt(9)
+                self._add_hyperlink(p, platform, url, font_size=9)
+                ep = p.add_run(")")
+                ep.font.size = Pt(9)
 
             for h in proj.get("highlights", []):
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
@@ -300,7 +319,7 @@ class CVBuilder:
             sr = sp.add_run(sec["title"])
             sr.bold = True
             sr.font.size = Pt(9)
-            sr.font.color.rgb = RGBColor(0x70, 0x68, 0x69)
+            sr.font.color.rgb = BLACK
 
             if sec["type"] == "grid":
                 items = sec["items"]
@@ -595,13 +614,15 @@ class CVBuilder:
         pdf.multi_cell(0, 4.8, self.info["summary"])
         pdf.ln(1)
 
-        # --- PROJECTS ---
-        if self.info.get("projects"):
-            pdf_section("Projects")
-            for proj in self.info["projects"]:
+        # --- COMPANY PROJECTS ---
+        if self.info.get("company_projects"):
+            pdf_section("Company Projects")
+            for proj in self.info["company_projects"]:
                 pdf.set_font("Calibri", "B", 10)
                 pdf.set_text_color(0, 0, 0)
-                pdf.cell(0, 5, proj["title"], new_x="LMARGIN", new_y="NEXT")
+                title = proj["title"]
+                extra = f"  —  {proj['company']}" if proj.get("company") else ""
+                pdf.cell(0, 5, f"{title}{extra}", new_x="LMARGIN", new_y="NEXT")
                 pdf.ln(1)
                 for h in proj.get("highlights", []):
                     text = h[2:].lstrip() if h and h[0] in '«»' else h
@@ -630,18 +651,18 @@ class CVBuilder:
                 pdf_bullet("•", text)
             pdf.ln(2)
 
-        # --- PORTFOLIO ---
-        pdf_section("Latest Portfolio")
-        for project in self.info.get("latest_portfolio", []):
+        # --- PERSONAL PORTFOLIO ---
+        pdf_section("Personal Portfolio")
+        for item in self.info.get("portfolio", []):
             pdf.set_font("Calibri", "B", 10)
             pdf.set_text_color(0, 0, 0)
-            pdf.cell(0, 5, project["title"], new_x="LMARGIN", new_y="NEXT")
-            if project.get("description"):
+            pdf.cell(0, 5, item["title"], new_x="LMARGIN", new_y="NEXT")
+            if item.get("description"):
                 pdf.set_font("Calibri", "", 9)
                 pdf.set_text_color(*BODY_CLR)
-                pdf.multi_cell(0, 4.5, project["description"])
+                pdf.multi_cell(0, 4.5, item["description"])
             pdf.ln(1)
-            for h in project.get("highlights", []):
+            for h in item.get("highlights", []):
                 text = h[2:].lstrip() if h and h[0] in '«»' else h
                 pdf_bullet("•", text)
             pdf.ln(2)
@@ -651,7 +672,7 @@ class CVBuilder:
         sections = self.info.get("skills_sections", [])
         for sec in sections:
             pdf.set_font("Calibri", "B", 9)
-            pdf.set_text_color(*SEC_CLR)
+            pdf.set_text_color(0, 0, 0)
             pdf.cell(0, 5, sec["title"], new_x="LMARGIN", new_y="NEXT")
             pdf.ln(1)
 

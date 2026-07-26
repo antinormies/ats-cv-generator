@@ -45,9 +45,23 @@ def ensure_output_dir():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
+def load_env_links():
+    links = {}
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    links[k.strip()] = v.strip()
+    return links
+
+
 def generate_cv(formats=None):
     ensure_output_dir()
-    builder = CVBuilder(PERSONAL_INFO)
+    links = load_env_links()
+    builder = CVBuilder(PERSONAL_INFO, links)
     results = {}
     if formats is None:
         formats = ["docx", "pdf"]
@@ -129,7 +143,7 @@ def main():
     if not args.no_cv:
         builder, paths = generate_cv()
     else:
-        builder = CVBuilder(PERSONAL_INFO)
+        builder = CVBuilder(PERSONAL_INFO, load_env_links())
 
     jobs = generate_jobs(args.jobs)
 
